@@ -804,70 +804,101 @@ function App() {
 
   return (
     <div className="workspace-shell">
-      <header className="workspace-header">
-        <div className="brand-block">
-          <div className="brand-mark">T</div>
-          <div className="brand-copy">
-            <p className="eyebrow">Business Workspace</p>
-            <h1>Điều hành công việc theo cấu trúc phân cấp</h1>
-            <p>
-              Không gian điều hành dành cho demo khách hàng, tập trung vào cây task
-              dạng thư mục, tree theo từng nhánh quản trị và lịch sử cập nhật theo thời gian thực.
-            </p>
-            <div className="workspace-meta-row">
-              <span className="workspace-meta-pill">{getRoleLabel(currentUser.role)}</span>
-              <span className="workspace-meta-pill">{currentUser.department}</span>
-              <span className="workspace-meta-pill">Firebase Realtime Database</span>
-            </div>
+      <header className="workspace-topbar">
+        <div className="topbar-brand">
+          <div className="brand-logo">T</div>
+          <div className="topbar-brand-text">
+            <span className="topbar-brand-label">TaskFlow</span>
+            <span className="topbar-brand-sub">Quản lý công việc phân cấp</span>
           </div>
         </div>
 
-        <div className="workspace-actions">
-          <div className="current-user-card">
-            <span className="avatar-chip small">{currentUser.name.slice(0, 1)}</span>
-            <div>
-              <strong>{currentUser.name}</strong>
-              <p>
-                {getRoleLabel(currentUser.role)} • {currentUser.department}
-              </p>
+        <div className="topbar-center">
+          <span className="topbar-pill">
+            <span className="dot"></span>
+            Firebase Live
+          </span>
+          <span className="topbar-pill">{getRoleLabel(currentUser.role)}</span>
+          <span className="topbar-pill">{currentUser.department}</span>
+        </div>
+
+        <div className="topbar-right">
+          <div className="user-badge">
+            <div className="user-badge-avatar">{currentUser.name.slice(0, 1)}</div>
+            <div className="user-badge-info">
+              <span className="user-badge-name">{currentUser.name}</span>
+              <span className="user-badge-role">{getRoleLabel(currentUser.role)}</span>
             </div>
           </div>
-
-          <div className="header-button-group">
-            {canCreateRootTask(currentUser) ? (
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => setCreateRootOpen(true)}
-              >
-                Tạo task gốc
-              </button>
-            ) : null}
-            <button type="button" className="ghost-button" onClick={handleLogout}>
-              Về trang login
+          {canCreateRootTask(currentUser) ? (
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setCreateRootOpen(true)}
+            >
+              + Tạo task gốc
             </button>
-          </div>
+          ) : null}
+          <button type="button" className="ghost-button" onClick={handleLogout}>
+            Đăng xuất
+          </button>
         </div>
       </header>
 
       <div className={`sync-banner ${syncState.tone}`}>{syncState.message}</div>
 
-      <section className="summary-strip">
-        <article className="summary-card">
-          <span>Phạm vi công việc</span>
-          <strong>{summary.total}</strong>
+      <section className="kpi-strip">
+        <article className="kpi-card">
+          <div className="kpi-icon blue">
+            <svg viewBox="0 0 20 20" fill="none" width="20" height="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="3" width="12" height="15" rx="2" />
+              <path d="M8 7h4M8 11h4M8 15h2" />
+            </svg>
+          </div>
+          <div className="kpi-data">
+            <p className="kpi-label">Phạm vi công việc</p>
+            <div className="kpi-value">{summary.total}</div>
+          </div>
+          <div className="kpi-glow blue"></div>
         </article>
-        <article className="summary-card">
-          <span>Đang thực hiện</span>
-          <strong>{summary.inProgress}</strong>
+        <article className="kpi-card">
+          <div className="kpi-icon cyan">
+            <svg viewBox="0 0 20 20" fill="none" width="20" height="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <circle cx="10" cy="10" r="7" />
+              <path d="M10 7v3l2 2" />
+            </svg>
+          </div>
+          <div className="kpi-data">
+            <p className="kpi-label">Đang thực hiện</p>
+            <div className="kpi-value">{summary.inProgress}</div>
+          </div>
+          <div className="kpi-glow cyan"></div>
         </article>
-        <article className="summary-card">
-          <span>Hoàn thành</span>
-          <strong>{summary.completed}</strong>
+        <article className="kpi-card">
+          <div className="kpi-icon green">
+            <svg viewBox="0 0 20 20" fill="none" width="20" height="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="10" cy="10" r="7" />
+              <path d="M6.5 10.5 9 13l4.5-5" />
+            </svg>
+          </div>
+          <div className="kpi-data">
+            <p className="kpi-label">Hoàn thành</p>
+            <div className="kpi-value">{summary.completed}</div>
+          </div>
+          <div className="kpi-glow green"></div>
         </article>
-        <article className="summary-card highlight">
-          <span>Trễ hạn</span>
-          <strong>{summary.overdue}</strong>
+        <article className="kpi-card danger">
+          <div className="kpi-icon red">
+            <svg viewBox="0 0 20 20" fill="none" width="20" height="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 3 2.5 16.5h15L10 3Z" />
+              <path d="M10 9v3M10 14.5h.01" />
+            </svg>
+          </div>
+          <div className="kpi-data">
+            <p className="kpi-label">Trễ hạn</p>
+            <div className="kpi-value">{summary.overdue}</div>
+          </div>
+          <div className="kpi-glow red"></div>
         </article>
       </section>
 

@@ -37,6 +37,7 @@ function MindMapBranch({
           type="button"
           data-node-id={node.id}
           className={`mindmap-node-button ${isSelected ? 'selected' : ''}`}
+          data-status={node.status}
           onClick={() => onSelect(node.id)}
         >
           <span className="mindmap-node-kicker">

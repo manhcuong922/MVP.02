@@ -3617,3 +3617,222 @@ body,
     display: none;
   }
 }
+
+/* ============================================================
+   TREE CONNECTOR ENHANCEMENTS
+   ============================================================ */
+
+/* L-shaped connectors: horizontal branch to each child node */
+.task-node-children {
+  border-left-color: rgba(147, 197, 253, 0.58);
+  border-left-width: 2px;
+  margin-left: 28px;
+  padding-left: 14px;
+  padding-bottom: 2px;
+}
+
+.task-node-children > .task-node-block {
+  position: relative;
+}
+
+.task-node-children > .task-node-block::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 22px;
+  width: 12px;
+  border-top: 2px solid rgba(147, 197, 253, 0.58);
+}
+
+/* Clip the trunk line below the last child */
+.task-node-children > .task-node-block:last-child::after {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 23px;
+  bottom: 0;
+  width: 4px;
+  background: var(--bg-panel);
+}
+
+/* Selected node: blue left accent stripe */
+.task-node-main {
+  position: relative;
+  overflow: hidden;
+}
+
+.task-node.selected .task-node-main::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  background: var(--blue-500);
+  border-radius: 0 3px 3px 0;
+}
+
+/* Subtle status tint on hover (idle only) */
+.task-node[data-status="completed"] .task-node-main:hover {
+  border-color: rgba(16, 185, 129, 0.28);
+  background: rgba(209, 250, 229, 0.18);
+}
+
+.task-node[data-status="awaiting_confirmation"] .task-node-main:hover {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(254, 243, 199, 0.18);
+}
+
+/* ============================================================
+   MINDMAP NODE STATUS COLORS (idle state only)
+   ============================================================ */
+
+.mindmap-node-button[data-status="completed"]:not(:hover):not(.selected):not(:focus-visible) {
+  border-color: rgba(16, 185, 129, 0.50);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(209, 250, 229, 0.92)),
+    linear-gradient(135deg, rgba(5, 150, 105, 0.06), transparent);
+}
+
+.mindmap-node-button[data-status="in_progress"]:not(:hover):not(.selected):not(:focus-visible) {
+  border-color: rgba(14, 165, 233, 0.46);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(224, 242, 254, 0.92)),
+    linear-gradient(135deg, rgba(14, 165, 233, 0.06), transparent);
+}
+
+.mindmap-node-button[data-status="awaiting_confirmation"]:not(:hover):not(.selected):not(:focus-visible) {
+  border-color: rgba(245, 158, 11, 0.46);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(254, 243, 199, 0.90)),
+    linear-gradient(135deg, rgba(245, 158, 11, 0.06), transparent);
+}
+
+.mindmap-node-button[data-status="overdue"]:not(:hover):not(.selected):not(:focus-visible) {
+  border-color: rgba(225, 29, 72, 0.44);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 228, 230, 0.88)),
+    linear-gradient(135deg, rgba(225, 29, 72, 0.05), transparent);
+}
+
+/* Stronger connector lines in the mindmap canvas */
+.mindmap-stack {
+  --tree-connector-color: rgba(96, 149, 245, 0.60);
+}
+
+/* Root-level node in tree canvas: indigo accent ring */
+.mindmap-stack > .mindmap-branch.vertical > .mindmap-card-shell > .mindmap-node-button:not(:hover):not(.selected) {
+  border-width: 2px;
+  border-color: rgba(99, 102, 241, 0.52);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(237, 233, 254, 0.94)),
+    linear-gradient(135deg, rgba(79, 70, 229, 0.07), rgba(99, 102, 241, 0.05));
+  box-shadow: 0 20px 52px rgba(79, 70, 229, 0.13), 0 4px 14px rgba(15, 23, 42, 0.07);
+}
+
+/* KPI strip responsive adjustments */
+@media (max-width: 960px) {
+  .kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .kpi-strip {
+    grid-template-columns: 1fr 1fr;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .topbar-center {
+    display: none;
+  }
+}
+
+/* ============================================================
+   MINDMAP TREE – EVEN SPACING + SINGLE-LINE CONNECTORS
+   Replace the fixed grid-column approach with flex so every
+   child column auto-expands to its full subtree width.
+   Horizontal connector bar is rebuilt with ::after segments
+   on the child wrappers so there is exactly ONE line per edge.
+   ============================================================ */
+
+/* Children row: flex instead of fixed-column grid */
+.mindmap-children {
+  display: flex;
+  grid-auto-flow: unset;
+  grid-auto-columns: unset;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 18px;
+  padding-left: 0;
+  position: relative;
+}
+
+/* Each child wrapper auto-sizes to its subtree content */
+.mindmap-child {
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* inner branch fills full subtree width */
+  position: relative;
+}
+
+/* Kill the old bar that assumed fixed column widths */
+.mindmap-children::before {
+  display: none !important;
+}
+
+/* ── Horizontal bar rebuilt from child ::after segments ──────
+   ::before  →  existing vertical drop from bar to node (untouched)
+   ::after   →  new horizontal bar segment for this child
+   ──────────────────────────────────────────────────────────── */
+
+/* First sibling: bar extends from node-center rightward into the gap */
+.mindmap-children:not(.single-child) > .mindmap-child:first-child::after {
+  content: '';
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  right: calc(-1 * var(--tree-node-gap) / 2);
+  border-top: 2px solid var(--tree-connector-color);
+}
+
+/* Last sibling: bar extends from gap leftward to node-center */
+.mindmap-children:not(.single-child) > .mindmap-child:last-child::after {
+  content: '';
+  position: absolute;
+  top: -18px;
+  left: calc(-1 * var(--tree-node-gap) / 2);
+  right: 50%;
+  border-top: 2px solid var(--tree-connector-color);
+}
+
+/* Middle siblings: bar spans the full gap on both sides */
+.mindmap-children > .mindmap-child:not(:first-child):not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: -18px;
+  left: calc(-1 * var(--tree-node-gap) / 2);
+  right: calc(-1 * var(--tree-node-gap) / 2);
+  border-top: 2px solid var(--tree-connector-color);
+}
+
+/* Mobile: collapse to vertical stack, hide all horizontal bars */
+@media (max-width: 720px) {
+  .mindmap-children {
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .mindmap-children > .mindmap-child::after {
+    display: none;
+  }
+
+  .mindmap-child {
+    align-items: center;
+  }
+}

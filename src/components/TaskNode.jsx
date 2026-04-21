@@ -84,6 +84,7 @@ function TaskNode({
       <div
         className={`task-node ${selectedTaskId === node.id ? 'selected' : ''}`}
         style={{ '--depth': level }}
+        data-status={node.status}
       >
         <div className="task-node-main">
           <button
