@@ -13,7 +13,7 @@ import SplitTaskModal from './components/SplitTaskModal'
 import TaskDetailPanel from './components/TaskDetailPanel'
 import TaskHierarchyMap from './components/TaskHierarchyMap'
 import TreeView from './components/TreeView'
-import { seedTaskHistory, seedTasks, seedUsers } from './data/demoData'
+import { seedTaskComments, seedTaskHistory, seedTasks, seedUsers } from './data/demoData'
 import { database } from './firebase/config'
 import { ensureDemoSeed } from './firebase/seed'
 import {
@@ -22,12 +22,14 @@ import {
   getRoleLabel,
   getStatusLabel,
   truncateText,
+  truncateTitleWords,
 } from './utils/formatters'
 import {
   buildCreateTaskMutation,
   buildEditTaskMutation,
   buildExecutionUpdateMutation,
   buildSplitTaskMutation,
+  buildTaskCommentMutation,
 } from './utils/mutationBuilders'
 import {
   buildTaskTree,
@@ -49,6 +51,7 @@ function App() {
   const [usersById, setUsersById] = useState(seedUsers)
   const [tasksById, setTasksById] = useState(seedTasks)
   const [historyById, setHistoryById] = useState(seedTaskHistory)
+  const [commentsById, setCommentsById] = useState(seedTaskComments)
   const [recentUserId, setRecentUserId] = useState(
     () => window.localStorage.getItem(STORAGE_KEY) ?? '',
   )
@@ -199,6 +202,7 @@ function App() {
         seedTaskHistory,
         'Lịch sử task',
       )
+      subscribeCollection('taskComments', setCommentsById, seedTaskComments, 'Task comments')
     }
 
     bootstrapRealtime()
@@ -294,14 +298,6 @@ function App() {
       setTreeDetailOpen(false)
     }
   }, [activeTree, activeTreeTasks, selectedTaskId, taskViewMode, treeRootTaskId])
-
-  const defaultExpandedMap = folderTree.slice(0, 6).reduce((collection, node) => {
-    collection[node.id] = true
-    return collection
-  }, {})
-
-  const effectiveExpandedMap =
-    Object.keys(expandedMap).length > 0 ? expandedMap : defaultExpandedMap
 
   const applyUpdates = async (updates, successMessage) => {
     setIsSaving(true)
@@ -560,6 +556,31 @@ function App() {
     )
   }
 
+  const handleAddComment = async (message) => {
+    if (!currentUser || !selectedRawTask) {
+      return false
+    }
+
+    const mutation = buildTaskCommentMutation({
+      currentUser,
+      task: selectedRawTask,
+      message,
+    })
+
+    if (!mutation) {
+      setSyncState({
+        tone: 'neutral',
+        message: 'ChÆ°a cÃ³ ná»™i dung trao Ä‘á»•i Ä‘á»ƒ gá»­i.',
+      })
+      return false
+    }
+
+    return applyUpdates(
+      mutation.updates,
+      `ÄÃ£ gá»­i trao Ä‘á»•i trong task "${selectedTask.title}".`,
+    )
+  }
+
   const renderFolderWorkspace = () => (
     <>
       <aside className="sidebar-panel">
@@ -567,71 +588,25 @@ function App() {
           <div>
             <p className="eyebrow">Task Directory</p>
             <h2>Cây task được phép truy cập</h2>
-            <p className="panel-support-text">
-              Chọn một task cha trong folder rồi mở riêng nhánh đó sang chế độ tree
-              để xem cấu trúc phân tầng rõ hơn.
-            </p>
           </div>
           <span className="panel-count">{filteredVisibleTasks.length} node</span>
         </div>
 
-        <div className="view-toolbar">
-          <div className="view-switch" role="tablist" aria-label="Task display mode">
-            <button
-              type="button"
-              className={`view-switch-button ${taskViewMode === 'folder' ? 'active' : ''}`}
-              aria-pressed={taskViewMode === 'folder'}
-              onClick={() => handleChangeTaskViewMode('folder')}
-            >
-              Folder
-            </button>
-            {canCurrentUserUseTree ? (
-              <button
-                type="button"
-                className="view-switch-button"
-                aria-disabled={!canOpenSelectedTaskTree}
-                disabled={!canOpenSelectedTaskTree}
-                onClick={() => selectedTask && handleOpenTreeFromTask(selectedTask.id)}
-              >
-                Tree Từ Task
-              </button>
-            ) : null}
-          </div>
-          <p className="view-switch-note">
-            {canCurrentUserUseTree
-              ? canOpenSelectedTaskTree
-                ? 'Task đang chọn có subtask. Bạn có thể mở nhánh này sang tree ngay.'
-                : 'Chỉ những task có subtask mới bật được tree. Hãy chọn một task cha trong danh sách.'
-              : 'Vai trò nhân viên chỉ hiển thị folder vì không có nhánh con để mở tree.'}
-          </p>
-        </div>
-
         <label className="search-field">
-          <span>Tìm theo task, người phụ trách, trạng thái hoặc mức ưu tiên</span>
+          <span>Tìm công việc</span>
           <input
             className="search-input"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Ví dụ: dashboard, Trần Anh Khoa, trễ hạn"
+            placeholder="Tìm theo tiêu đề, người phụ trách hoặc trạng thái"
           />
         </label>
-
-        <div className="legend-row">
-          <span className="legend-item">
-            <span className="folder-dot"></span>
-            Node có subtask
-          </span>
-          <span className="legend-item">
-            <span className="file-dot"></span>
-            Node lá
-          </span>
-        </div>
 
         <TreeView
           tree={folderTree}
           usersById={usersById}
           selectedTaskId={selectedTaskId}
-          expandedMap={effectiveExpandedMap}
+          expandedMap={expandedMap}
           onToggle={handleToggleExpand}
           onSelect={handleSelectTask}
           searchActive={searchActive}
@@ -645,12 +620,15 @@ function App() {
         tasksById={derivedTasksById}
         usersById={usersById}
         historyById={historyById}
+        commentsById={commentsById}
         visibleIdSet={visibleIdSet}
         onSelectTask={handleSelectTask}
+        onOpenCreateRoot={canCreateRootTask(currentUser) ? () => setCreateRootOpen(true) : null}
         onOpenCreateSubtask={() => setCreateSubtaskOpen(true)}
         onOpenSplit={() => setSplitOpen(true)}
         onOpenEdit={() => setEditOpen(true)}
         onUpdateExecution={handleExecutionUpdate}
+        onAddComment={handleAddComment}
         isSaving={isSaving}
         canOpenTreeView={canOpenSelectedTaskTree}
         onOpenTaskTree={() => selectedTask && handleOpenTreeFromTask(selectedTask.id)}
@@ -665,17 +643,19 @@ function App() {
         <div className="panel-topline">
           <div>
             <p className="eyebrow">HRM Task Tree</p>
-            <h2>{treeRootTask ? treeRootTask.title : 'Cây phân rã theo nhánh task'}</h2>
-            <p className="panel-support-text">
-              Đây là cây của riêng task đang chọn trong folder. Node gốc giữ nguyên,
-              các task con tiếp tục đổ dọc xuống dưới và vẫn hiển thị chi tiết ở panel bên phải.
-            </p>
+            <h2 title={treeRootTask?.title ?? undefined}>
+              {treeRootTask
+                ? truncateTitleWords(treeRootTask.title, 4, 34)
+                : 'Cây phân rã theo nhánh task'}
+            </h2>
           </div>
 
           <div className="tree-header-side">
             <span className="panel-count">{activeTreeTasks.length} node</span>
-            <span className="tree-status-pill">
-              {treeRootTask ? `Gốc cây: ${treeRootTask.title}` : 'Chưa có gốc cây'}
+            <span className="tree-status-pill" title={treeRootTask?.title ?? undefined}>
+              {treeRootTask
+                ? `Gốc cây: ${truncateTitleWords(treeRootTask.title, 4, 30)}`
+                : 'Chưa có gốc cây'}
             </span>
           </div>
         </div>
@@ -695,31 +675,30 @@ function App() {
                   Tree Scope
                 </button>
               </div>
-              <p className="view-switch-note">
-                Kéo để pan, dùng nút zoom để phóng to hoặc thu nhỏ, và khi nhấn node
-                hệ thống sẽ tự focus vào vị trí node đó trong canvas.
-              </p>
             </div>
 
             <label className="search-field tree-search-card">
-              <span>Tìm trong nhánh tree hiện tại</span>
+              <span>Tìm trong nhánh</span>
               <input
                 className="search-input"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Ví dụ: onboarding, tuyển dụng, dashboard"
+                placeholder="Tìm node trong nhánh hiện tại"
               />
             </label>
           </div>
 
           <article className="tree-selection-card">
-            <p className="eyebrow">Selection</p>
-            <strong>{selectedTask?.title ?? 'Chưa chọn node'}</strong>
+            <p className="eyebrow">Node Đang Chọn</p>
+            <strong title={selectedTask?.title ?? undefined}>
+              {selectedTask
+                ? truncateTitleWords(selectedTask.title, 4, 34)
+                : 'Chưa chọn node'}
+            </strong>
             <p>
               {selectedTask
-                ? truncateText(selectedTask.description, 160) ||
-                  'Task này chưa có mô tả chi tiết.'
-                : 'Chạm vào một node bất kỳ để mở panel chi tiết và focus canvas vào node đó.'}
+                ? truncateText(selectedTask.description, 160) || 'Chưa có mô tả chi tiết.'
+                : 'Chưa chọn node.'}
             </p>
 
             {selectedTask ? (
@@ -742,19 +721,6 @@ function App() {
       </div>
 
       <div className="tree-canvas-section">
-        <div className="tree-canvas-topbar">
-          <div className="legend-row tree-legend-row">
-            <span className="legend-item">
-              <span className="folder-dot"></span>
-              Nét dọc giữa các tầng được giữ gọn để không bị thừa line
-            </span>
-            <span className="legend-item">
-              <span className="file-dot"></span>
-              Click node để focus canvas và mở chi tiết task
-            </span>
-          </div>
-        </div>
-
         <div className="tree-canvas-frame">
           <TaskHierarchyMap
             tree={activeTree}
@@ -774,12 +740,15 @@ function App() {
                 tasksById={derivedTasksById}
                 usersById={usersById}
                 historyById={historyById}
+                commentsById={commentsById}
                 visibleIdSet={visibleIdSet}
                 onSelectTask={handleSelectTask}
+                onOpenCreateRoot={canCreateRootTask(currentUser) ? () => setCreateRootOpen(true) : null}
                 onOpenCreateSubtask={() => setCreateSubtaskOpen(true)}
                 onOpenSplit={() => setSplitOpen(true)}
                 onOpenEdit={() => setEditOpen(true)}
                 onUpdateExecution={handleExecutionUpdate}
+                onAddComment={handleAddComment}
                 isSaving={isSaving}
                 className="tree-overlay-panel"
                 onClose={() => setTreeDetailOpen(false)}
@@ -845,8 +814,6 @@ function App() {
         </div>
       </header>
 
-      <div className={`sync-banner ${syncState.tone}`}>{syncState.message}</div>
-
       <section className="kpi-strip">
         <article className="kpi-card">
           <div className="kpi-icon blue">
@@ -856,23 +823,10 @@ function App() {
             </svg>
           </div>
           <div className="kpi-data">
-            <p className="kpi-label">Phạm vi công việc</p>
+            <p className="kpi-label">Tổng CV</p>
             <div className="kpi-value">{summary.total}</div>
           </div>
           <div className="kpi-glow blue"></div>
-        </article>
-        <article className="kpi-card">
-          <div className="kpi-icon cyan">
-            <svg viewBox="0 0 20 20" fill="none" width="20" height="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <circle cx="10" cy="10" r="7" />
-              <path d="M10 7v3l2 2" />
-            </svg>
-          </div>
-          <div className="kpi-data">
-            <p className="kpi-label">Đang thực hiện</p>
-            <div className="kpi-value">{summary.inProgress}</div>
-          </div>
-          <div className="kpi-glow cyan"></div>
         </article>
         <article className="kpi-card">
           <div className="kpi-icon green">
@@ -886,6 +840,44 @@ function App() {
             <div className="kpi-value">{summary.completed}</div>
           </div>
           <div className="kpi-glow green"></div>
+        </article>
+        <article className="kpi-card">
+          <div className="kpi-icon cyan">
+            <svg viewBox="0 0 20 20" fill="none" width="20" height="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <circle cx="10" cy="10" r="7" />
+              <path d="M10 7v3l2 2" />
+            </svg>
+          </div>
+          <div className="kpi-data">
+            <p className="kpi-label">Đang xử lý</p>
+            <div className="kpi-value">{summary.processing}</div>
+          </div>
+          <div className="kpi-glow cyan"></div>
+        </article>
+        <article className="kpi-card">
+          <div className="kpi-icon blue">
+            <svg viewBox="0 0 20 20" fill="none" width="20" height="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4.5 10h11M10 4.5v11" />
+            </svg>
+          </div>
+          <div className="kpi-data">
+            <p className="kpi-label">Chưa thực hiện</p>
+            <div className="kpi-value">{summary.notStarted}</div>
+          </div>
+          <div className="kpi-glow blue"></div>
+        </article>
+        <article className="kpi-card danger">
+          <div className="kpi-icon red">
+            <svg viewBox="0 0 20 20" fill="none" width="20" height="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 6l8 8M14 6l-8 8" />
+              <circle cx="10" cy="10" r="7" />
+            </svg>
+          </div>
+          <div className="kpi-data">
+            <p className="kpi-label">Hủy</p>
+            <div className="kpi-value">{summary.cancelled}</div>
+          </div>
+          <div className="kpi-glow red"></div>
         </article>
         <article className="kpi-card danger">
           <div className="kpi-icon red">

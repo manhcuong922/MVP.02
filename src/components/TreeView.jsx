@@ -12,8 +12,8 @@ function TreeView({
   if (tree.length === 0) {
     return (
       <div className="empty-card compact">
-        <strong>Không có task nào khớp bộ lọc.</strong>
-        <p>Hãy thử đổi user demo hoặc xóa từ khóa tìm kiếm để xem lại cây task.</p>
+        <strong>Không có dữ liệu.</strong>
+        <p>Không tìm thấy công việc phù hợp.</p>
       </div>
     )
   }

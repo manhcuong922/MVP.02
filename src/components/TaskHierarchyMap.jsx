@@ -54,7 +54,7 @@ function MindMapBranch({
               {getPriorityLabel(node.priority)}
             </span>
             {late ? <span className="badge badge-danger">Trễ hạn</span> : null}
-            {hasChildren ? <span className="progress-chip">{formatPercent(node.progress)}</span> : null}
+            <span className="progress-chip">{formatPercent(node.progress)}</span>
           </div>
 
           <span className="mindmap-node-deadline">Deadline {formatDate(node.deadline)}</span>
@@ -217,8 +217,8 @@ function TaskHierarchyMap({
   if (tree.length === 0) {
     return (
       <div className="empty-card compact">
-        <strong>Không có task nào khớp bộ lọc.</strong>
-        <p>Thử đổi từ khóa tìm kiếm hoặc quay lại folder để chọn một nhánh khác.</p>
+        <strong>Không có dữ liệu.</strong>
+        <p>Không tìm thấy node phù hợp.</p>
       </div>
     )
   }
@@ -227,8 +227,7 @@ function TaskHierarchyMap({
     <div className={`mindmap-surface ${isPanning ? 'is-panning' : ''}`}>
       <div className="mindmap-surface-toolbar">
         <div className="mindmap-surface-hint">
-          <strong>Canvas tree</strong>
-          <span>Kéo để pan, cuộn để di chuyển, `Ctrl + wheel` để zoom.</span>
+          <strong>Sơ đồ nhánh</strong>
         </div>
 
         <div className="mindmap-control-group">
@@ -240,7 +239,7 @@ function TaskHierarchyMap({
             +
           </button>
           <button type="button" className="mindmap-control-button reset" onClick={resetView}>
-            Reset
+            Đặt lại
           </button>
         </div>
       </div>

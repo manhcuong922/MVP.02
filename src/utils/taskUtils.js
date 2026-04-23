@@ -14,12 +14,34 @@ function sortByRoleAndName(a, b) {
   return a.name.localeCompare(b.name, 'vi')
 }
 
-function floorPercent(completed, total) {
-  if (!total) {
-    return 0
+function clampProgress(value, min = 0, max = 100) {
+  const normalized = Number(value ?? 0)
+
+  if (Number.isNaN(normalized)) {
+    return min
   }
 
-  return Math.floor((completed / total) * 100)
+  return Math.min(max, Math.max(min, normalized))
+}
+
+function normalizeLeafStatus(task) {
+  if (task?.status === 'completed') {
+    return 'completed'
+  }
+
+  if (task?.status === 'cancelled') {
+    return 'cancelled'
+  }
+
+  if (task?.status === 'in_progress') {
+    return 'in_progress'
+  }
+
+  if (task?.status === 'overdue') {
+    return clampProgress(task.progress) > 0 ? 'in_progress' : 'pending'
+  }
+
+  return 'pending'
 }
 
 function getLegacyCompletionConfirmed(task) {
@@ -111,7 +133,11 @@ export function isTaskLate(task) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  return new Date(task.deadline) < today && task.status !== 'completed'
+  return (
+    new Date(task.deadline) < today &&
+    task.status !== 'completed' &&
+    task.status !== 'cancelled'
+  )
 }
 
 export function deriveTaskMetrics(tasksById) {
@@ -152,15 +178,25 @@ export function deriveTaskMetrics(tasksById) {
     let nextTask
 
     if (isLeafNode) {
-      const completed = task.status === 'completed'
+      const normalizedStatus = normalizeLeafStatus(task)
+      const completed = normalizedStatus === 'completed'
+      const cancelled = normalizedStatus === 'cancelled'
 
       nextTask = {
         ...task,
-        status: completed ? 'completed' : 'not_completed',
-        progress: completed ? 100 : 0,
+        status: normalizedStatus,
+        progress: completed
+          ? 100
+          : cancelled
+            ? 0
+            : normalizedStatus === 'in_progress'
+              ? clampProgress(task.progress, 0, 99)
+              : 0,
         completionConfirmed: false,
+        completedAt: completed ? task.completedAt ?? task.updatedAt ?? task.createdAt : null,
         childTaskCount: 0,
         completedChildCount: 0,
+        cancelledChildCount: 0,
         incompleteChildCount: 0,
         allChildrenCompleted: false,
         readyToConfirm: false,
@@ -170,27 +206,43 @@ export function deriveTaskMetrics(tasksById) {
       const completedChildCount = childTasks.filter(
         (childTask) => childTask.status === 'completed',
       ).length
-      const incompleteChildCount = childTaskCount - completedChildCount
+      const cancelledChildCount = childTasks.filter(
+        (childTask) => childTask.status === 'cancelled',
+      ).length
+      const averageProgress = Math.floor(
+        childTasks.reduce((total, childTask) => total + Number(childTask.progress ?? 0), 0) /
+          childTaskCount,
+      )
+      const incompleteChildCount = childTasks.filter(
+        (childTask) => childTask.status !== 'completed',
+      ).length
       const allChildrenCompleted = incompleteChildCount === 0
+      const allChildrenCancelled =
+        childTaskCount > 0 && cancelledChildCount === childTaskCount
       const completionConfirmed = allChildrenCompleted
         ? getLegacyCompletionConfirmed(task)
         : false
 
       let status = 'pending'
 
-      if (allChildrenCompleted) {
+      if (allChildrenCancelled) {
+        status = 'cancelled'
+      } else if (allChildrenCompleted) {
         status = completionConfirmed ? 'completed' : 'awaiting_confirmation'
-      } else if (completedChildCount > 0) {
+      } else if (averageProgress > 0 || cancelledChildCount > 0) {
         status = 'in_progress'
       }
 
       nextTask = {
         ...task,
         status,
-        progress: floorPercent(completedChildCount, childTaskCount),
+        progress: status === 'cancelled' ? 0 : status === 'pending' ? 0 : averageProgress,
         completionConfirmed,
+        completedAt:
+          status === 'completed' ? task.completedAt ?? task.updatedAt ?? task.createdAt : null,
         childTaskCount,
         completedChildCount,
+        cancelledChildCount,
         incompleteChildCount,
         allChildrenCompleted,
         readyToConfirm: allChildrenCompleted && !completionConfirmed,
@@ -247,11 +299,20 @@ export function getSearchScopedIds(tasksById, visibleTasks, usersById, term) {
 
   for (const task of visibleTasks) {
     const assigneeName = usersById[task.assignedTo]?.name ?? ''
+    const statusLabel =
+      {
+        not_completed: 'Chưa thực hiện',
+        pending: 'Chưa thực hiện',
+        in_progress: 'Đang xử lý',
+        cancelled: 'Hủy',
+      }[task.status] ??
+      STATUS_LABELS[task.status] ??
+      ''
     const searchableValues = [
       task.title,
       task.description,
       assigneeName,
-      STATUS_LABELS[task.status] ?? '',
+      statusLabel,
       PRIORITY_LABELS[task.priority] ?? '',
     ]
 
@@ -408,24 +469,32 @@ export function getTaskHistoryEntries(historyById, taskId) {
     .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
 }
 
+export function getTaskCommentEntries(commentsById, taskId) {
+  return toArray(commentsById)
+    .filter((entry) => entry.taskId === taskId)
+    .sort((left, right) => new Date(left.createdAt) - new Date(right.createdAt))
+}
+
 export function summarizeTasks(tasks) {
   return tasks.reduce(
     (summary, task) => {
       summary.total += 1
       summary.completed += task.status === 'completed' ? 1 : 0
+      summary.cancelled += task.status === 'cancelled' ? 1 : 0
       summary.overdue += isTaskLate(task) ? 1 : 0
-      summary.inProgress +=
-        task.status !== 'completed' && !isTaskLate(task) ? 1 : 0
-      summary.pending +=
+      summary.processing +=
+        task.status === 'in_progress' || task.status === 'awaiting_confirmation' ? 1 : 0
+      summary.notStarted +=
         task.status === 'pending' || task.status === 'not_completed' ? 1 : 0
       return summary
     },
     {
       total: 0,
       completed: 0,
+      cancelled: 0,
       overdue: 0,
-      inProgress: 0,
-      pending: 0,
+      processing: 0,
+      notStarted: 0,
     },
   )
 }

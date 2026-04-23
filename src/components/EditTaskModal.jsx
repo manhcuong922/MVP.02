@@ -52,7 +52,7 @@ function EditTaskModal({ open, task, assignees, onClose, onSubmit, isSaving }) {
   return (
     <Modal
       title="Chỉnh Sửa Task"
-      subtitle={`Cập nhật nhanh các trường quan trọng của "${task.title}". Mọi thay đổi sẽ được ghi log vào lịch sử chỉnh sửa.`}
+      subtitle={`Cập nhật thông tin cho "${task.title}".`}
       onClose={onClose}
     >
       <form className="form-grid" onSubmit={handleSubmit}>

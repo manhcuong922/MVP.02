@@ -6,6 +6,17 @@ import {
   STATUS_LABELS,
 } from '../data/demoData'
 
+const STATUS_LABEL_OVERRIDES = {
+  not_completed: 'Chưa thực hiện',
+  pending: 'Chưa thực hiện',
+  in_progress: 'Đang xử lý',
+  cancelled: 'Hủy',
+}
+
+const FIELD_LABEL_OVERRIDES = {
+  progress: 'Tiến độ',
+}
+
 export function formatDate(dateValue) {
   if (!dateValue) {
     return 'Chưa đặt'
@@ -41,7 +52,7 @@ export function getRoleLabel(role) {
 }
 
 export function getStatusLabel(status) {
-  return STATUS_LABELS[status] ?? status
+  return STATUS_LABEL_OVERRIDES[status] ?? STATUS_LABELS[status] ?? status
 }
 
 export function getPriorityLabel(priority) {
@@ -49,7 +60,7 @@ export function getPriorityLabel(priority) {
 }
 
 export function getFieldLabel(fieldName) {
-  return FIELD_LABELS[fieldName] ?? fieldName
+  return FIELD_LABEL_OVERRIDES[fieldName] ?? FIELD_LABELS[fieldName] ?? fieldName
 }
 
 export function getActionLabel(actionType) {
@@ -62,5 +73,31 @@ export function truncateText(value, maxLength = 120) {
   }
 
   return `${value.slice(0, maxLength).trim()}...`
+}
+
+export function truncateTitleWords(value, maxWords = 4, maxLength = 40) {
+  if (!value) {
+    return ''
+  }
+
+  const normalized = value.trim().replace(/\s+/g, ' ')
+
+  if (!normalized) {
+    return ''
+  }
+
+  const words = normalized.split(' ')
+
+  if (words.length <= maxWords && normalized.length <= maxLength) {
+    return normalized
+  }
+
+  const compactText = words.slice(0, maxWords).join(' ')
+
+  if (compactText.length > maxLength) {
+    return `${compactText.slice(0, maxLength).trim()}...`
+  }
+
+  return `${compactText}...`
 }
 

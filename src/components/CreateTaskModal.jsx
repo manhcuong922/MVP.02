@@ -28,10 +28,10 @@ function CreateTaskModal({
     return null
   }
 
-  const title = parentTask ? 'Tạo Subtask' : 'Tạo Task Gốc'
+  const title = parentTask ? 'Tạo Node Con' : 'Tạo Task Gốc'
   const subtitle = parentTask
-    ? `Task mới sẽ nằm dưới "${parentTask.title}" và chỉ có thể giao cho cấp dưới trực tiếp.`
-    : 'Task gốc chỉ dành cho Tổng giám đốc, sau đó có thể tiếp tục phân rã thành các nhánh nhỏ hơn.'
+    ? `Tạo node mới cho "${parentTask.title}".`
+    : 'Khởi tạo task gốc mới.'
 
   const handleChange = (fieldName, value) => {
     setForm((currentForm) => ({
@@ -62,7 +62,7 @@ function CreateTaskModal({
           <input
             value={form.title}
             onChange={(event) => handleChange('title', event.target.value)}
-            placeholder="Ví dụ: Chuẩn hóa pipeline khách hàng theo vùng"
+            placeholder="Nhập tiêu đề task"
           />
         </label>
 
@@ -86,7 +86,7 @@ function CreateTaskModal({
             rows="5"
             value={form.description}
             onChange={(event) => handleChange('description', event.target.value)}
-            placeholder="Mô tả ngắn gọn đầu việc, phạm vi và kỳ vọng đầu ra."
+            placeholder="Mô tả ngắn gọn mục tiêu và phạm vi công việc"
           />
         </label>
 
@@ -117,7 +117,7 @@ function CreateTaskModal({
             Hủy
           </button>
           <button type="submit" className="primary-button" disabled={isSaving}>
-            {isSaving ? 'Đang lưu...' : parentTask ? 'Tạo subtask' : 'Tạo task gốc'}
+            {isSaving ? 'Đang lưu...' : parentTask ? 'Tạo node con' : 'Tạo task gốc'}
           </button>
         </div>
       </form>

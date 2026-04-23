@@ -14,6 +14,32 @@ function nowIso() {
   return new Date().toISOString()
 }
 
+function normalizeExecutionStatus(status) {
+  if (status === 'completed') {
+    return 'completed'
+  }
+
+  if (status === 'cancelled') {
+    return 'cancelled'
+  }
+
+  if (status === 'in_progress') {
+    return 'in_progress'
+  }
+
+  return 'pending'
+}
+
+function clampProgress(value, min = 0, max = 100) {
+  const normalized = Number(value ?? 0)
+
+  if (Number.isNaN(normalized)) {
+    return min
+  }
+
+  return Math.min(max, Math.max(min, normalized))
+}
+
 function formatDisplayValue(fieldName, value, usersById) {
   if (fieldName === 'assignedTo') {
     return usersById[value]?.name ?? value ?? 'Chưa giao'
@@ -58,6 +84,17 @@ function createHistoryEntry({
   }
 }
 
+function createCommentEntry({ taskId, actor, message, createdAt }) {
+  return {
+    id: createId('comment'),
+    taskId,
+    authorId: actor.id,
+    authorName: actor.name,
+    message,
+    createdAt,
+  }
+}
+
 export function buildCreateTaskMutation({
   currentUser,
   parentTask,
@@ -77,10 +114,11 @@ export function buildCreateTaskMutation({
     createdBy: currentUser.id,
     assignedTo: values.assignedTo,
     roleLevel: ROLE_LEVELS[assignedUser?.role] ?? 0,
-    status: 'not_completed',
+    status: 'pending',
     priority: values.priority,
     progress: 0,
     completionConfirmed: false,
+    completedAt: null,
     deadline: values.deadline,
     childrenIds: [],
     createdAt,
@@ -151,10 +189,11 @@ export function buildSplitTaskMutation({
       createdBy: currentUser.id,
       assignedTo: item.assignedTo,
       roleLevel: ROLE_LEVELS[assignedUser?.role] ?? 0,
-      status: 'not_completed',
+      status: 'pending',
       priority: item.priority,
       progress: 0,
       completionConfirmed: false,
+      completedAt: null,
       deadline: item.deadline,
       childrenIds: [],
       createdAt,
@@ -278,16 +317,26 @@ export function buildExecutionUpdateMutation({
     nextTask = {
       ...task,
       completionConfirmed: Boolean(values.confirmed),
+      completedAt: values.confirmed ? task.completedAt ?? updatedAt : null,
       updatedAt,
     }
   } else {
-    const normalizedStatus = values.status === 'completed' ? 'completed' : 'not_completed'
+    const normalizedStatus = normalizeExecutionStatus(values.status)
+    const nextProgress =
+      normalizedStatus === 'completed'
+        ? 100
+        : normalizedStatus === 'cancelled'
+          ? 0
+          : normalizedStatus === 'in_progress'
+            ? clampProgress(values.progress, 0, 99)
+            : 0
 
     nextTask = {
       ...task,
       status: normalizedStatus,
-      progress: normalizedStatus === 'completed' ? 100 : 0,
+      progress: nextProgress,
       completionConfirmed: false,
+      completedAt: normalizedStatus === 'completed' ? updatedAt : null,
       updatedAt,
     }
   }
@@ -329,6 +378,10 @@ export function buildExecutionUpdateMutation({
       status: derivedTask.status,
       progress: derivedTask.progress,
       completionConfirmed: resolvedConfirmation,
+      completedAt:
+        derivedTask.status === 'completed'
+          ? rawTask.completedAt ?? previousTask.completedAt ?? updatedAt
+          : null,
       updatedAt,
     }
 
@@ -389,5 +442,28 @@ export function buildExecutionUpdateMutation({
   return {
     taskId: task.id,
     updates,
+  }
+}
+
+export function buildTaskCommentMutation({ currentUser, task, message }) {
+  const trimmedMessage = message?.trim() ?? ''
+
+  if (!trimmedMessage) {
+    return null
+  }
+
+  const createdAt = nowIso()
+  const entry = createCommentEntry({
+    taskId: task.id,
+    actor: currentUser,
+    message: trimmedMessage,
+    createdAt,
+  })
+
+  return {
+    commentId: entry.id,
+    updates: {
+      [`/taskComments/${entry.id}`]: entry,
+    },
   }
 }

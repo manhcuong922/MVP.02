@@ -131,11 +131,11 @@ function TaskNode({
               {getPriorityLabel(node.priority)}
             </span>
             {late ? <span className="badge badge-danger">Trễ hạn</span> : null}
-            {hasChildren ? <span className="progress-chip">{formatPercent(node.progress)}</span> : null}
+            <span className="progress-chip">{formatPercent(node.progress)}</span>
           </div>
         </div>
 
-        {hasChildren ? (
+        {Number(node.progress ?? 0) > 0 || hasChildren ? (
           <div className="node-progress-track">
             <div
               className="node-progress-fill"

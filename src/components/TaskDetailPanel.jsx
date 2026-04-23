@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
   formatDate,
+  formatDateTime,
   formatPercent,
   getPriorityLabel,
-  getRoleLabel,
   getStatusLabel,
+  truncateTitleWords,
   truncateText,
 } from '../utils/formatters'
 import {
@@ -14,10 +15,12 @@ import {
   canUpdateExecution,
   getTaskAncestors,
   getTaskChildren,
+  getTaskCommentEntries,
   getTaskHistoryEntries,
   isTaskLate,
 } from '../utils/taskUtils'
 import EditHistoryList from './EditHistoryList'
+import TaskDiscussionPanel from './TaskDiscussionPanel'
 import TaskHistoryPanel from './TaskHistoryPanel'
 
 const tabs = [
@@ -42,12 +45,15 @@ function TaskDetailPanel({
   tasksById,
   usersById,
   historyById,
+  commentsById,
   visibleIdSet,
   onSelectTask,
+  onOpenCreateRoot = null,
   onOpenCreateSubtask,
   onOpenSplit,
   onOpenEdit,
   onUpdateExecution,
+  onAddComment,
   isSaving,
   className = '',
   onClose = null,
@@ -56,30 +62,42 @@ function TaskDetailPanel({
   treeActionLabel = 'Mở nhánh dạng tree',
 }) {
   const [activeTab, setActiveTab] = useState('overview')
-  const [draftStatus, setDraftStatus] = useState('not_completed')
+  const [draftStatus, setDraftStatus] = useState('pending')
+  const [draftProgress, setDraftProgress] = useState(0)
   const [draftNote, setDraftNote] = useState('')
 
   useEffect(() => {
     if (!task) {
-      setDraftStatus('not_completed')
+      setDraftStatus('pending')
+      setDraftProgress(0)
       setDraftNote('')
       return
     }
 
-    setDraftStatus(task.status === 'completed' ? 'completed' : 'not_completed')
+    const nextStatus =
+      task.status === 'completed' ||
+      task.status === 'cancelled' ||
+      task.status === 'in_progress'
+        ? task.status
+        : 'pending'
+
+    setDraftStatus(nextStatus)
+    setDraftProgress(
+      nextStatus === 'completed'
+        ? 100
+        : nextStatus === 'cancelled'
+          ? 0
+          : Math.min(Number(task.progress ?? 0), 99),
+    )
     setDraftNote('')
-  }, [task?.id, task?.status, task?.updatedAt])
+  }, [task?.id, task?.progress, task?.status, task?.updatedAt])
 
   if (!task) {
     return (
       <section className={`detail-panel empty ${className}`.trim()}>
         <div className="detail-empty">
           <p className="eyebrow">Task Detail</p>
-          <h2>Chọn một task ở cây bên trái để xem chi tiết</h2>
-          <p>
-            Panel này hiển thị đầy đủ thông tin task, subtasks, timeline giao việc
-            và lịch sử cập nhật theo đúng nhánh đang được chọn.
-          </p>
+          <h2>Chọn công việc để xem chi tiết</h2>
         </div>
       </section>
     )
@@ -87,8 +105,10 @@ function TaskDetailPanel({
 
   const creator = usersById[task.createdBy]
   const assignee = usersById[task.assignedTo]
+  const assigneeManager = assignee?.managerId ? usersById[assignee.managerId] : null
   const childTasks = getTaskChildren(tasksById, task.id, visibleIdSet)
   const historyEntries = getTaskHistoryEntries(historyById, task.id)
+  const commentEntries = getTaskCommentEntries(commentsById, task.id)
   const activityEntries = historyEntries.filter(
     (entry) => entry.actionType !== 'edit' || entry.fieldName === 'note',
   )
@@ -106,6 +126,49 @@ function TaskDetailPanel({
   const branchCompleted = hasChildren && task.status === 'completed'
   const branchWaitingConfirmation =
     hasChildren && task.status === 'awaiting_confirmation'
+  const descriptionText = task.description?.trim() ?? ''
+  const summaryText = descriptionText || 'Chưa có mô tả ngắn cho task này.'
+  const showDescriptionCard = descriptionText.length > 180
+  const progressValue = Math.min(Number(task.progress ?? 0), 100)
+  const totalTaskCount = hasChildren ? task.childTaskCount : 1
+  const completedTaskCount =
+    hasChildren ? task.completedChildCount : task.status === 'completed' ? 1 : 0
+  const supportInfo = [
+    { label: 'Người tạo', value: creator?.name ?? 'Không rõ' },
+    {
+      label: 'Báo cáo cho',
+      value: assignee ? assigneeManager?.name ?? 'Cấp cao nhất' : 'Chưa rõ',
+    },
+    { label: 'Cập nhật cuối', value: formatDateTime(task.updatedAt) },
+    { label: 'Log hoạt động', value: `${historyEntries.length} lượt` },
+    { label: 'Trao doi', value: `${commentEntries.length} tin nhan` },
+  ]
+
+  const normalizedCompletedAtLabel = task.completedAt
+    ? formatDateTime(task.completedAt)
+    : 'Chưa hoàn thành'
+
+  const handleDraftStatusChange = (nextStatus) => {
+    setDraftStatus(nextStatus)
+
+    if (nextStatus === 'completed') {
+      setDraftProgress(100)
+      return
+    }
+
+    if (nextStatus === 'cancelled' || nextStatus === 'pending') {
+      setDraftProgress(0)
+      return
+    }
+
+    setDraftProgress((currentValue) => {
+      if (currentValue > 0 && currentValue < 100) {
+        return currentValue
+      }
+
+      return Number(task?.progress ?? 0) > 0 ? Math.min(Number(task.progress), 99) : 10
+    })
+  }
 
   const submitExecution = async (event) => {
     event.preventDefault()
@@ -117,6 +180,7 @@ function TaskDetailPanel({
         }
       : {
           status: draftStatus,
+          progress: draftProgress,
           note: draftNote,
         }
 
@@ -140,19 +204,26 @@ function TaskDetailPanel({
       <div className="detail-header">
         <div className="detail-breadcrumbs">
           {ancestors.map((ancestor) => (
-            <span key={ancestor.id}>{ancestor.title}</span>
+            <span key={ancestor.id} title={ancestor.title}>
+              {truncateTitleWords(ancestor.title, 4, 26)}
+            </span>
           ))}
-          <strong>{task.title}</strong>
+          <strong title={task.title}>{truncateTitleWords(task.title, 4, 28)}</strong>
         </div>
 
         <div className="detail-title-row">
           <div>
             <p className="eyebrow">Task Detail</p>
             <h2>{task.title}</h2>
-            <p className="detail-summary">{truncateText(task.description, 180)}</p>
+            <p className="detail-summary">{truncateText(summaryText, 180)}</p>
           </div>
 
           <div className="detail-actions">
+            {onOpenCreateRoot ? (
+              <button type="button" className="ghost-button" onClick={onOpenCreateRoot}>
+                Tạo task mới
+              </button>
+            ) : null}
             {canOpenTreeView && onOpenTaskTree ? (
               <button type="button" className="ghost-button" onClick={onOpenTaskTree}>
                 {treeActionLabel}
@@ -169,12 +240,12 @@ function TaskDetailPanel({
                 className="ghost-button"
                 onClick={onOpenCreateSubtask}
               >
-                Tạo subtask
+                Tạo node con
               </button>
             ) : null}
             {allowSplit ? (
               <button type="button" className="primary-button" onClick={onOpenSplit}>
-                Chia task
+                Tạo nhiều node
               </button>
             ) : null}
           </div>
@@ -191,32 +262,44 @@ function TaskDetailPanel({
           ) : null}
         </div>
 
+        <div className="detail-progress-block">
+          <div className="detail-progress-header">
+            <span>Tiến độ thực tế</span>
+            <strong>{formatPercent(progressValue)}</strong>
+          </div>
+          <div className="detail-progress-track">
+            <div className="detail-progress-fill" style={{ width: `${progressValue}%` }} />
+          </div>
+          <p className="detail-progress-caption">
+            {hasChildren
+              ? `${completedTaskCount}/${totalTaskCount} công việc hoàn thành`
+              : getStatusLabel(task.status)}
+          </p>
+        </div>
+
         <div className="detail-metrics">
-          <InfoTile label="Người tạo" value={creator?.name ?? 'Không rõ'} />
           <InfoTile label="Người phụ trách" value={assignee?.name ?? 'Chưa giao'} />
-          <InfoTile label="Vai trò" value={getRoleLabel(assignee?.role)} />
-          <InfoTile
-            label="Deadline"
-            value={formatDate(task.deadline)}
-            accent={late ? 'danger-text' : ''}
-          />
-          <InfoTile
-            label={hasChildren ? 'Task con hoàn thành' : 'Loại thực thi'}
-            value={
-              hasChildren
-                ? `${task.completedChildCount}/${task.childTaskCount}`
-                : 'Task lá'
-            }
-          />
-          <InfoTile
-            label={hasChildren ? 'Tiến độ tự động' : 'Log cập nhật'}
-            value={hasChildren ? formatPercent(task.progress) : String(historyEntries.length)}
-          />
+          <InfoTile label="Phòng ban" value={assignee?.department ?? creator?.department ?? 'Chưa rõ'} />
+          <InfoTile label="Ngày tạo" value={formatDateTime(task.createdAt)} />
+          <InfoTile label="Ngày hoàn thành" value={normalizedCompletedAtLabel} />
+          <InfoTile label="CV hoàn thành" value={String(completedTaskCount)} />
+          <InfoTile label="Tổng số CV" value={String(totalTaskCount)} />
+          <InfoTile label="Deadline" value={formatDate(task.deadline)} accent={late ? 'danger-text' : ''} />
         </div>
       </div>
 
       <div className="detail-tab-row">
-        {tabs.map((tab) => (
+        {[
+          tabs[0],
+          {
+            id: 'discussion',
+            label:
+              commentEntries.length > 0
+                ? `Trao doi (${commentEntries.length})`
+                : 'Trao doi',
+          },
+          ...tabs.slice(1),
+        ].map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -230,35 +313,27 @@ function TaskDetailPanel({
 
       <div className="detail-content">
         {activeTab === 'overview' ? (
-          <div className="overview-grid">
-            <article className="content-card">
-              <div className="content-card-header">
-                <h3>Mô tả công việc</h3>
-              </div>
-              <p>{task.description || 'Chưa có mô tả cho task này.'}</p>
-            </article>
+          <div className={`overview-grid ${showDescriptionCard ? '' : 'single-column'}`.trim()}>
+            {showDescriptionCard ? (
+              <article className="content-card detail-description-card">
+                <div className="content-card-header">
+                  <h3>Mô tả đầy đủ</h3>
+                </div>
+                <p>{descriptionText}</p>
+              </article>
+            ) : null}
 
-            <article className="content-card">
+            <article className="content-card detail-support-card">
               <div className="content-card-header">
-                <h3>Thông tin giao việc</h3>
+                <h3>Thông tin bổ sung</h3>
               </div>
               <div className="detail-list">
-                <div>
-                  <span>Người tạo</span>
-                  <strong>{creator?.name ?? 'Không rõ'}</strong>
-                </div>
-                <div>
-                  <span>Người phụ trách</span>
-                  <strong>{assignee?.name ?? 'Chưa giao'}</strong>
-                </div>
-                <div>
-                  <span>Phòng ban</span>
-                  <strong>{assignee?.department ?? 'Chưa rõ'}</strong>
-                </div>
-                <div>
-                  <span>Cập nhật lần cuối</span>
-                  <strong>{formatDate(task.updatedAt)}</strong>
-                </div>
+                {supportInfo.map((item) => (
+                  <div key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                ))}
               </div>
             </article>
 
@@ -266,9 +341,7 @@ function TaskDetailPanel({
               <div className="content-card-header">
                 <h3>{hasChildren ? 'Theo dõi tiến độ nhánh' : 'Cập nhật kết quả task'}</h3>
                 <span className="subtle-label">
-                  {hasChildren
-                    ? 'Tiến độ được tính tự động từ số task con đã hoàn thành.'
-                    : 'Task lá không dùng thanh kéo tiến độ, chỉ chốt hoàn thành hoặc chưa hoàn thành.'}
+                  {hasChildren ? 'Tổng hợp từ node con' : 'Cập nhật trạng thái thực thi'}
                 </span>
               </div>
 
@@ -276,7 +349,7 @@ function TaskDetailPanel({
                 <div className="execution-readout">
                   <div className="execution-summary-grid">
                     <div className="execution-summary-card">
-                      <span>Đã xong</span>
+                      <span>Hoàn thành</span>
                       <strong>
                         {task.completedChildCount}/{task.childTaskCount} task con
                       </strong>
@@ -286,15 +359,10 @@ function TaskDetailPanel({
                       <strong>{getStatusLabel(task.status)}</strong>
                     </div>
                     <div className="execution-summary-card">
-                      <span>Phần trăm hiện tại</span>
+                      <span>Tiến độ</span>
                       <strong>{formatPercent(task.progress)}</strong>
                     </div>
                   </div>
-
-                  <p className="execution-support-copy">
-                    Khi toàn bộ task con đã hoàn thành, người phụ trách nhánh sẽ xác nhận
-                    lần cuối để nhánh này chuyển sang trạng thái hoàn thành.
-                  </p>
 
                   {allowUpdate ? (
                     canConfirmBranch || branchCompleted ? (
@@ -307,8 +375,8 @@ function TaskDetailPanel({
                             onChange={(event) => setDraftNote(event.target.value)}
                             placeholder={
                               branchCompleted
-                                ? 'Ví dụ: Mở lại nhánh để yêu cầu chỉnh sửa thêm.'
-                                : 'Ví dụ: Đã rà soát đầy đủ kết quả đầu ra của toàn bộ task con.'
+                                ? 'Nhập lý do mở lại nhánh.'
+                                : 'Nhập ghi chú xác nhận.'
                             }
                           />
                         </label>
@@ -325,27 +393,19 @@ function TaskDetailPanel({
                       </form>
                     ) : (
                       <div className="empty-card compact">
-                        <strong>Nhánh này chưa đủ điều kiện xác nhận.</strong>
-                        <p>
-                          Hãy hoàn tất toàn bộ task con bên dưới. Khi đạt 100%, nút xác nhận
-                          sẽ tự bật cho người phụ trách nhánh.
-                        </p>
+                        <strong>Chưa thể xác nhận nhánh.</strong>
+                        <p>Hoàn tất toàn bộ node con để tiếp tục.</p>
                       </div>
                     )
                   ) : (
                     <div className="empty-card compact">
-                      <strong>Task đang ở chế độ chỉ xem.</strong>
-                      <p>
-                        Bạn có thể theo dõi tiến độ tự động của cả nhánh, nhưng chỉ người
-                        phụ trách nhánh mới xác nhận hoàn thành được.
-                      </p>
+                      <strong>Bạn không có quyền xác nhận nhánh này.</strong>
+                      <p>Chỉ người phụ trách nhánh có thể thao tác.</p>
                     </div>
                   )}
 
                   {branchWaitingConfirmation ? (
-                    <div className="inline-status-note">
-                      Tất cả task con đã xong. Nhánh này đang chờ người phụ trách xác nhận.
-                    </div>
+                    <div className="inline-status-note">Đang chờ xác nhận hoàn tất.</div>
                   ) : null}
                 </div>
               ) : allowUpdate ? (
@@ -354,11 +414,29 @@ function TaskDetailPanel({
                     <span>Trạng thái kết quả</span>
                     <select
                       value={draftStatus}
-                      onChange={(event) => setDraftStatus(event.target.value)}
+                      onChange={(event) => handleDraftStatusChange(event.target.value)}
                     >
-                      <option value="not_completed">Chưa hoàn thành</option>
+                      <option value="pending">Chưa thực hiện</option>
+                      <option value="in_progress">Đang xử lý</option>
                       <option value="completed">Hoàn thành</option>
+                      <option value="cancelled">Hủy</option>
                     </select>
+                  </label>
+
+                  <label className="field">
+                    <span>Tiến độ %</span>
+                    <div className="progress-editor">
+                      <input
+                        type="range"
+                        min="0"
+                        max={draftStatus === 'in_progress' ? '99' : '100'}
+                        step="1"
+                        value={draftProgress}
+                        disabled={draftStatus !== 'in_progress'}
+                        onChange={(event) => setDraftProgress(Number(event.target.value))}
+                      />
+                      <strong>{formatPercent(draftProgress)}</strong>
+                    </div>
                   </label>
 
                   <label className="field field-full">
@@ -367,7 +445,7 @@ function TaskDetailPanel({
                       rows="4"
                       value={draftNote}
                       onChange={(event) => setDraftNote(event.target.value)}
-                      placeholder="Ví dụ: Đã gửi kết quả cuối, hoặc cần trả lại để làm lại."
+                      placeholder="Nhập ghi chú cập nhật."
                     />
                   </label>
 
@@ -379,23 +457,31 @@ function TaskDetailPanel({
                 </form>
               ) : (
                 <div className="empty-card compact">
-                  <strong>Task đang ở chế độ chỉ xem.</strong>
-                  <p>
-                    Người phụ trách task hoặc người giao việc trực tiếp mới có thể đổi
-                    giữa trạng thái hoàn thành và chưa hoàn thành.
-                  </p>
+                  <strong>Bạn không có quyền cập nhật task này.</strong>
+                  <p>Chỉ người phụ trách hoặc người giao việc có thể thao tác.</p>
                 </div>
               )}
             </article>
           </div>
         ) : null}
 
+        {activeTab === 'discussion' ? (
+          <TaskDiscussionPanel
+            key={task.id}
+            taskId={task.id}
+            currentUser={currentUser}
+            usersById={usersById}
+            entries={commentEntries}
+            onSubmitComment={onAddComment}
+            isSaving={isSaving}
+          />
+        ) : null}
+
         {activeTab === 'subtasks' ? (
           <div className="subtask-grid">
             {childTasks.length === 0 ? (
               <div className="empty-card compact">
-                <strong>Task này chưa có subtask trực tiếp.</strong>
-                <p>Hãy dùng nút "Tạo subtask" hoặc "Chia task" để phân rã tiếp.</p>
+                <strong>Chưa có node con.</strong>
               </div>
             ) : null}
 
@@ -407,6 +493,7 @@ function TaskDetailPanel({
                   key={childTask.id}
                   type="button"
                   className="subtask-card"
+                  data-status={childTask.status}
                   onClick={() => onSelectTask(childTask.id)}
                 >
                   <div className="subtask-card-topline">

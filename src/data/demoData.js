@@ -699,6 +699,65 @@ const rawHistory = [
   },
 ]
 
+const rawTaskComments = [
+  {
+    taskId: 'task_root_growth',
+    authorId: 'ceo_1',
+    message:
+      'Q2 nay can uu tien nhom doanh nghiep vua va lon. Moi nhanh cap nhat trao doi tai day de theo doi tap trung.',
+    createdAt: at(8.2),
+  },
+  {
+    taskId: 'task_dep_sales',
+    authorId: 'deputy_1',
+    message:
+      'Team CRM va doi tac giu nhip cap nhat 2 ngay mot lan. Neu vuong dau moi lien he thi note ngay trong task.',
+    createdAt: at(16.2),
+  },
+  {
+    taskId: 'task_mgr_crm',
+    authorId: 'manager_1',
+    message:
+      'Da chia scope thanh 2 phan: lam sach du lieu lead va chuan hoa kich ban cham soc. Hai ban cap nhat tien do tai day.',
+    createdAt: at(20.3),
+  },
+  {
+    taskId: 'task_staff_outreach',
+    authorId: 'staff_2',
+    message:
+      'Em da xong bo cadence SMB, dang bo sung them phan follow-up cho nhom Enterprise.',
+    createdAt: at(28.4),
+  },
+  {
+    taskId: 'task_mgr_partnership',
+    authorId: 'manager_2',
+    message:
+      'Can them support phan deck chot loi ich cho doi tac cap 1. Minh se chot ban noi dung truoc 15h hom nay.',
+    createdAt: at(30.4),
+  },
+  {
+    taskId: 'task_mgr_automation',
+    authorId: 'manager_3',
+    message:
+      'Dashboard can uu tien KPI qua han va tile hoan thanh theo phong ban. Team frontend co the dua mockup som giup minh.',
+    createdAt: at(22.1),
+  },
+  {
+    taskId: 'task_staff_dashboard',
+    authorId: 'staff_5',
+    message:
+      'Em dang chia card thanh 3 nhom: tong quan, qua han va canh bao SLA. Co gi can them anh nhan em.',
+    createdAt: at(34.2),
+  },
+  {
+    taskId: 'task_root_ops',
+    authorId: 'deputy_2',
+    message:
+      'Nhanh nay can dong vai tro khung van hanh chung. Moi phong ban can comment truc tiep cac diem vo trong quy trinh.',
+    createdAt: at(14.6),
+  },
+]
+
 export const seedTaskHistory = rawHistory.reduce((collection, entry, index) => {
   const id = `history_${String(index + 1).padStart(3, '0')}`
 
@@ -711,8 +770,21 @@ export const seedTaskHistory = rawHistory.reduce((collection, entry, index) => {
   return collection
 }, {})
 
+export const seedTaskComments = rawTaskComments.reduce((collection, entry, index) => {
+  const id = `comment_${String(index + 1).padStart(3, '0')}`
+
+  collection[id] = {
+    id,
+    ...entry,
+    authorName: seedUsers[entry.authorId]?.name ?? 'Nguoi dung he thong',
+  }
+
+  return collection
+}, {})
+
 export const seedData = {
   users: seedUsers,
   tasks: seedTasks,
   taskHistory: seedTaskHistory,
+  taskComments: seedTaskComments,
 }
