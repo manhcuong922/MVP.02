@@ -17,11 +17,7 @@ import { seedTaskComments, seedTaskHistory, seedTasks, seedUsers } from './data/
 import { database } from './firebase/config'
 import { ensureDemoSeed } from './firebase/seed'
 import {
-  formatPercent,
-  getPriorityLabel,
   getRoleLabel,
-  getStatusLabel,
-  truncateText,
   truncateTitleWords,
 } from './utils/formatters'
 import {
@@ -46,6 +42,7 @@ import {
 
 const STORAGE_KEY = 'mvp-task-manager-demo-user'
 const VIEW_MODE_STORAGE_KEY = 'mvp-task-manager-view-mode'
+const THEME_STORAGE_KEY = 'mvp-task-manager-theme'
 
 function App() {
   const [usersById, setUsersById] = useState(seedUsers)
@@ -59,6 +56,17 @@ function App() {
     const storedMode = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY)
 
     return storedMode === 'tree' ? 'tree' : 'folder'
+  })
+  const [theme, setTheme] = useState(() => {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+
+    if (storedTheme === 'dark' || storedTheme === 'light') {
+      return storedTheme
+    }
+
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light'
   })
   const [currentUserId, setCurrentUserId] = useState('')
   const [selectedTaskId, setSelectedTaskId] = useState(null)
@@ -141,6 +149,13 @@ function App() {
     derivedTasksById,
     visibleIdSet,
   )
+  const canOpenTreeScopeFromTopbar =
+    canCurrentUserUseTree && (taskViewMode === 'tree' || canOpenSelectedTaskTree)
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   useEffect(() => {
     let isActive = true
@@ -410,6 +425,18 @@ function App() {
     revealTask(taskId)
   }
 
+  const handleToggleTheme = () => {
+    setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))
+  }
+
+  const handleOpenTreeScopeFromNavbar = () => {
+    if (taskViewMode === 'tree' || !selectedTask) {
+      return
+    }
+
+    handleOpenTreeFromTask(selectedTask.id)
+  }
+
   const handleCreateRootTask = async (values) => {
     if (!currentUser) {
       return false
@@ -584,14 +611,6 @@ function App() {
   const renderFolderWorkspace = () => (
     <>
       <aside className="sidebar-panel">
-        <div className="panel-topline">
-          <div>
-            <p className="eyebrow">Task Directory</p>
-            <h2>Cây task được phép truy cập</h2>
-          </div>
-          <span className="panel-count">{filteredVisibleTasks.length} node</span>
-        </div>
-
         <label className="search-field">
           <span>Tìm công việc</span>
           <input
@@ -642,41 +661,16 @@ function App() {
       <div className="tree-workspace-header">
         <div className="panel-topline">
           <div>
-            <p className="eyebrow">HRM Task Tree</p>
             <h2 title={treeRootTask?.title ?? undefined}>
               {treeRootTask
                 ? truncateTitleWords(treeRootTask.title, 4, 34)
                 : 'Cây phân rã theo nhánh task'}
             </h2>
           </div>
-
-          <div className="tree-header-side">
-            <span className="panel-count">{activeTreeTasks.length} node</span>
-            <span className="tree-status-pill" title={treeRootTask?.title ?? undefined}>
-              {treeRootTask
-                ? `Gốc cây: ${truncateTitleWords(treeRootTask.title, 4, 30)}`
-                : 'Chưa có gốc cây'}
-            </span>
-          </div>
         </div>
 
-        <div className="tree-toolbar-grid">
+        <div className="tree-toolbar-grid single-column">
           <div className="tree-toolbar-card">
-            <div className="view-toolbar tree-toolbar-inner">
-              <div className="view-switch" role="tablist" aria-label="Task display mode">
-                <button
-                  type="button"
-                  className="view-switch-button"
-                  onClick={() => handleChangeTaskViewMode('folder')}
-                >
-                  Quay Về Folder
-                </button>
-                <button type="button" className="view-switch-button active" aria-pressed="true">
-                  Tree Scope
-                </button>
-              </div>
-            </div>
-
             <label className="search-field tree-search-card">
               <span>Tìm trong nhánh</span>
               <input
@@ -687,36 +681,6 @@ function App() {
               />
             </label>
           </div>
-
-          <article className="tree-selection-card">
-            <p className="eyebrow">Node Đang Chọn</p>
-            <strong title={selectedTask?.title ?? undefined}>
-              {selectedTask
-                ? truncateTitleWords(selectedTask.title, 4, 34)
-                : 'Chưa chọn node'}
-            </strong>
-            <p>
-              {selectedTask
-                ? truncateText(selectedTask.description, 160) || 'Chưa có mô tả chi tiết.'
-                : 'Chưa chọn node.'}
-            </p>
-
-            {selectedTask ? (
-              <div className="tree-selection-meta">
-                <span className={`badge status-${selectedTask.status}`}>
-                  {getStatusLabel(selectedTask.status)}
-                </span>
-                <span className={`badge priority-${selectedTask.priority}`}>
-                  {getPriorityLabel(selectedTask.priority)}
-                </span>
-                {selectedTask.childTaskCount > 0 ? (
-                  <span className="progress-chip">
-                    {formatPercent(selectedTask.progress)}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-          </article>
         </div>
       </div>
 
@@ -780,6 +744,31 @@ function App() {
             <span className="topbar-brand-label">TaskFlow</span>
             <span className="topbar-brand-sub">Quản lý công việc phân cấp</span>
           </div>
+          {canCurrentUserUseTree ? (
+            <div
+              className="topbar-tree-switch view-switch"
+              role="tablist"
+              aria-label="Chuyển chế độ hiển thị task"
+            >
+              <button
+                type="button"
+                className={`view-switch-button ${taskViewMode === 'folder' ? 'active' : ''}`}
+                aria-pressed={taskViewMode === 'folder'}
+                onClick={() => handleChangeTaskViewMode('folder')}
+              >
+                Folder
+              </button>
+              <button
+                type="button"
+                className={`view-switch-button ${taskViewMode === 'tree' ? 'active' : ''}`}
+                aria-pressed={taskViewMode === 'tree'}
+                onClick={handleOpenTreeScopeFromNavbar}
+                disabled={!canOpenTreeScopeFromTopbar}
+              >
+                Tree Scope
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="topbar-center">
@@ -792,6 +781,21 @@ function App() {
         </div>
 
         <div className="topbar-right">
+          <button
+            type="button"
+            className={`theme-toggle-button ${theme === 'dark' ? 'active' : ''}`}
+            onClick={handleToggleTheme}
+            aria-pressed={theme === 'dark'}
+            aria-label={theme === 'dark' ? 'Chuyển sang light mode' : 'Chuyển sang dark mode'}
+          >
+            <span className="theme-toggle-copy">
+              <span className="theme-toggle-label">Dark mode</span>
+              <span className="theme-toggle-state">{theme === 'dark' ? 'Bật' : 'Tắt'}</span>
+            </span>
+            <span className="theme-toggle-switch" aria-hidden="true">
+              <span className="theme-toggle-thumb"></span>
+            </span>
+          </button>
           <div className="user-badge">
             <div className="user-badge-avatar">{currentUser.name.slice(0, 1)}</div>
             <div className="user-badge-info">

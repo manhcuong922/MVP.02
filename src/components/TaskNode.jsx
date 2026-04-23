@@ -76,7 +76,6 @@ function TaskNode({
   const childTaskCount = node.childTaskCount ?? node.treeChildren.length
   const hasChildren = childTaskCount > 0
   const isExpanded = searchActive ? true : Boolean(expandedMap[node.id])
-  const assignee = usersById[node.assignedTo]
   const late = isTaskLate(node)
 
   return (
@@ -119,7 +118,6 @@ function TaskNode({
 
             <span className="task-node-copy">
               <strong>{node.title}</strong>
-              <small>{assignee?.name ?? 'Chưa rõ người phụ trách'}</small>
             </span>
           </button>
 

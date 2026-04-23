@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(curl -s \"https://tiengviet-68b03-default-rtdb.firebaseio.com/tasks.json\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s \"https://tiengviet-68b03-default-rtdb.firebaseio.com/tasks.json\" -o \"d:/MVP.02/tasks_temp.json\")"
     ]
   }
 }

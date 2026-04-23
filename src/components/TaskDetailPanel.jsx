@@ -5,7 +5,6 @@ import {
   formatPercent,
   getPriorityLabel,
   getStatusLabel,
-  truncateTitleWords,
   truncateText,
 } from '../utils/formatters'
 import {
@@ -13,7 +12,6 @@ import {
   canEditTask,
   canSplitTask,
   canUpdateExecution,
-  getTaskAncestors,
   getTaskChildren,
   getTaskCommentEntries,
   getTaskHistoryEntries,
@@ -96,7 +94,6 @@ function TaskDetailPanel({
     return (
       <section className={`detail-panel empty ${className}`.trim()}>
         <div className="detail-empty">
-          <p className="eyebrow">Task Detail</p>
           <h2>Chọn công việc để xem chi tiết</h2>
         </div>
       </section>
@@ -115,7 +112,6 @@ function TaskDetailPanel({
   const editEntries = historyEntries.filter(
     (entry) => entry.actionType === 'edit' && entry.fieldName !== 'note',
   )
-  const ancestors = getTaskAncestors(tasksById, task.id, visibleIdSet)
   const late = isTaskLate(task)
   const hasChildren = childTasks.length > 0
   const allowCreateChild = canCreateChildTask(currentUser, task, usersById)
@@ -127,7 +123,6 @@ function TaskDetailPanel({
   const branchWaitingConfirmation =
     hasChildren && task.status === 'awaiting_confirmation'
   const descriptionText = task.description?.trim() ?? ''
-  const summaryText = descriptionText || 'Chưa có mô tả ngắn cho task này.'
   const showDescriptionCard = descriptionText.length > 180
   const progressValue = Math.min(Number(task.progress ?? 0), 100)
   const totalTaskCount = hasChildren ? task.childTaskCount : 1
@@ -202,20 +197,9 @@ function TaskDetailPanel({
       ) : null}
 
       <div className="detail-header">
-        <div className="detail-breadcrumbs">
-          {ancestors.map((ancestor) => (
-            <span key={ancestor.id} title={ancestor.title}>
-              {truncateTitleWords(ancestor.title, 4, 26)}
-            </span>
-          ))}
-          <strong title={task.title}>{truncateTitleWords(task.title, 4, 28)}</strong>
-        </div>
-
         <div className="detail-title-row">
           <div>
-            <p className="eyebrow">Task Detail</p>
             <h2>{task.title}</h2>
-            <p className="detail-summary">{truncateText(summaryText, 180)}</p>
           </div>
 
           <div className="detail-actions">
