@@ -8,6 +8,8 @@ function TreeView({
   onToggle,
   onSelect,
   searchActive,
+  collapsible = true,
+  showChildren = true,
 }) {
   if (tree.length === 0) {
     return (
@@ -31,6 +33,8 @@ function TreeView({
           onToggle={onToggle}
           onSelect={onSelect}
           searchActive={searchActive}
+          collapsible={collapsible}
+          showChildren={showChildren}
         />
       ))}
     </div>

@@ -71,11 +71,13 @@ function TaskNode({
   onToggle,
   onSelect,
   searchActive,
+  collapsible = true,
+  showChildren = true,
 }) {
-  const hasVisibleChildren = node.treeChildren.length > 0
+  const hasVisibleChildren = showChildren && node.treeChildren.length > 0
   const childTaskCount = node.childTaskCount ?? node.treeChildren.length
   const hasChildren = childTaskCount > 0
-  const isExpanded = searchActive ? true : Boolean(expandedMap[node.id])
+  const isExpanded = collapsible ? (searchActive ? true : Boolean(expandedMap[node.id])) : true
   const late = isTaskLate(node)
 
   return (
@@ -92,27 +94,29 @@ function TaskNode({
             onClick={() => onSelect(node.id)}
           >
             <span className="tree-left">
-              {hasChildren ? (
-                <span
-                  className="tree-toggle"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onToggle(node.id)
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
+              {collapsible ? (
+                hasChildren ? (
+                  <span
+                    className="tree-toggle"
+                    onClick={(event) => {
+                      event.stopPropagation()
                       onToggle(node.id)
-                    }
-                  }}
-                >
-                  <ChevronIcon open={isExpanded} />
-                </span>
-              ) : (
-                <span className="tree-toggle spacer" />
-              )}
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        onToggle(node.id)
+                      }
+                    }}
+                  >
+                    <ChevronIcon open={isExpanded} />
+                  </span>
+                ) : (
+                  <span className="tree-toggle spacer" />
+                )
+              ) : null}
               {hasChildren ? <FolderIcon open={isExpanded} /> : <FileIcon />}
             </span>
 
@@ -156,6 +160,8 @@ function TaskNode({
               onToggle={onToggle}
               onSelect={onSelect}
               searchActive={searchActive}
+              collapsible={collapsible}
+              showChildren={showChildren}
             />
           ))}
         </div>

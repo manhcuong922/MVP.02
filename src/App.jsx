@@ -16,10 +16,7 @@ import TreeView from './components/TreeView'
 import { seedTaskComments, seedTaskHistory, seedTasks, seedUsers } from './data/demoData'
 import { database } from './firebase/config'
 import { ensureDemoSeed } from './firebase/seed'
-import {
-  getRoleLabel,
-  truncateTitleWords,
-} from './utils/formatters'
+import { getRoleLabel } from './utils/formatters'
 import {
   buildCreateTaskMutation,
   buildEditTaskMutation,
@@ -84,6 +81,7 @@ function App() {
   const [isSplitOpen, setSplitOpen] = useState(false)
   const [isEditOpen, setEditOpen] = useState(false)
   const [isTreeDetailOpen, setTreeDetailOpen] = useState(false)
+  const [isTreeSidebarOpen, setTreeSidebarOpen] = useState(true)
 
   const deferredSearch = useDeferredValue(searchTerm)
   const currentUser = usersById[currentUserId]
@@ -143,6 +141,7 @@ function App() {
   )
   const activeTreeTasks = searchActive ? filteredTreeTasks : treeSourceTasks
   const activeTree = buildTaskTree(derivedTasksById, activeTreeTasks)
+  const activeTreeIdSet = new Set(activeTreeTasks.map((task) => task.id))
   const canOpenSelectedTaskTree = canOpenTaskTree(
     currentUser,
     selectedTask,
@@ -368,6 +367,7 @@ function App() {
       setExpandedMap({})
       setSearchTerm('')
       setTreeDetailOpen(false)
+      setTreeSidebarOpen(true)
     })
   }
 
@@ -383,6 +383,7 @@ function App() {
       setSplitOpen(false)
       setEditOpen(false)
       setTreeDetailOpen(false)
+      setTreeSidebarOpen(true)
     })
   }
 
@@ -393,6 +394,7 @@ function App() {
     if (nextMode === 'folder') {
       setTreeRootTaskId(null)
       setTreeDetailOpen(false)
+      setTreeSidebarOpen(true)
     }
   }
 
@@ -411,6 +413,41 @@ function App() {
     }
   }
 
+  const resolveTreeScopeTaskId = (taskId) => {
+    let currentTask = derivedTasksById[taskId]
+
+    while (currentTask) {
+      if (canOpenTaskTree(currentUser, currentTask, derivedTasksById, visibleIdSet)) {
+        return currentTask.id
+      }
+
+      if (!currentTask.parentTaskId || !visibleIdSet.has(currentTask.parentTaskId)) {
+        return null
+      }
+
+      currentTask = derivedTasksById[currentTask.parentTaskId]
+    }
+
+    return null
+  }
+
+  const handleSelectTaskFromTreeList = (taskId) => {
+    const nextTreeScopeTaskId = resolveTreeScopeTaskId(taskId)
+
+    if (!nextTreeScopeTaskId) {
+      if (activeTreeIdSet.has(taskId)) {
+        revealTask(taskId)
+        setTreeDetailOpen(true)
+      }
+
+      return
+    }
+
+    setTreeRootTaskId(nextTreeScopeTaskId)
+    revealTask(taskId)
+    setTreeDetailOpen(true)
+  }
+
   const handleOpenTreeFromTask = (taskId) => {
     const nextTask = derivedTasksById[taskId]
 
@@ -422,6 +459,7 @@ function App() {
     setTreeRootTaskId(taskId)
     setTaskViewMode('tree')
     setTreeDetailOpen(true)
+    setTreeSidebarOpen(true)
     revealTask(taskId)
   }
 
@@ -629,6 +667,7 @@ function App() {
           onToggle={handleToggleExpand}
           onSelect={handleSelectTask}
           searchActive={searchActive}
+          collapsible
         />
       </aside>
 
@@ -649,16 +688,19 @@ function App() {
         onUpdateExecution={handleExecutionUpdate}
         onAddComment={handleAddComment}
         isSaving={isSaving}
-        canOpenTreeView={canOpenSelectedTaskTree}
+        canOpenTreeView={false}
         onOpenTaskTree={() => selectedTask && handleOpenTreeFromTask(selectedTask.id)}
         treeActionLabel="Mở nhánh dạng tree"
       />
     </>
   )
 
-  const renderTreeWorkspace = () => (
-    <section className="tree-workspace">
-      <div className="tree-workspace-header">
+  const renderLegacyTreeWorkspace = () => {
+    const isTreeDetailVisible = isTreeDetailOpen && Boolean(selectedTask)
+
+    return (
+      <section className="tree-workspace">
+        <div className="tree-workspace-header tree-workspace-floating-header">
         <div className="panel-topline">
           <div>
             <h2 title={treeRootTask?.title ?? undefined}>
@@ -670,7 +712,7 @@ function App() {
         </div>
 
         <div className="tree-toolbar-grid single-column">
-          <div className="tree-toolbar-card">
+          <div className="tree-toolbar-card tree-search-float">
             <label className="search-field tree-search-card">
               <span>Tìm trong nhánh</span>
               <input
@@ -684,19 +726,24 @@ function App() {
         </div>
       </div>
 
-      <div className="tree-canvas-section">
-        <div className="tree-canvas-frame">
-          <TaskHierarchyMap
-            tree={activeTree}
-            usersById={usersById}
-            selectedTaskId={selectedTaskId}
-            onSelect={handleSelectTask}
-            rootTaskId={treeRootTaskId}
-            detailPanelOpen={isTreeDetailOpen && Boolean(selectedTask)}
-          />
+        <div className={`tree-stage ${isTreeDetailVisible ? 'detail-open' : ''}`.trim()}>
+          <div className="tree-stage-canvas">
+            <div className="tree-canvas-section">
+              <div className="tree-canvas-frame">
+                <TaskHierarchyMap
+                  tree={activeTree}
+                  usersById={usersById}
+                  selectedTaskId={selectedTaskId}
+                  onSelect={handleSelectTask}
+                  rootTaskId={treeRootTaskId}
+                  isDetailOpen={isTreeDetailVisible}
+                />
+              </div>
+            </div>
+          </div>
 
-          {selectedTask ? (
-            <div className={`tree-detail-overlay ${isTreeDetailOpen ? 'open' : ''}`}>
+          {isTreeDetailVisible ? (
+            <aside className="tree-detail-side">
               <TaskDetailPanel
                 key={`${selectedTask.id}-${selectedTask.updatedAt ?? 'none'}-tree`}
                 currentUser={currentUser}
@@ -714,15 +761,243 @@ function App() {
                 onUpdateExecution={handleExecutionUpdate}
                 onAddComment={handleAddComment}
                 isSaving={isSaving}
-                className="tree-overlay-panel"
+                className="tree-side-panel"
                 onClose={() => setTreeDetailOpen(false)}
               />
-            </div>
+            </aside>
           ) : null}
         </div>
-      </div>
-    </section>
-  )
+      </section>
+    )
+  }
+
+  const renderObsoleteTreeWorkspace = () => {
+    const isTreeDetailVisible = isTreeDetailOpen && Boolean(selectedTask)
+
+    return (
+      <section className="tree-workspace">
+        <div className="tree-workspace-header tree-workspace-floating-header">
+          <div className="panel-topline">
+            <div>
+              <p className="eyebrow">Tree Scope</p>
+              <h2 title={treeRootTask?.title ?? undefined}>
+                {treeRootTask
+                  ? truncateTitleWords(treeRootTask.title, 5, 48)
+                  : 'Cây phân rã theo nhánh task'}
+              </h2>
+              <p className="panel-support-text">
+                {searchActive
+                  ? `Đang hiển thị ${activeTreeTasks.length} node khớp từ khóa trong nhánh hiện tại.`
+                  : 'Danh sách node cha được ghim bên trái, còn sơ đồ tree hiển thị như mặt phẳng làm việc để bấm node xem chi tiết.'}
+              </p>
+            </div>
+
+            <div className="tree-header-side tree-header-stats">
+              <span className="panel-count">{activeTreeTasks.length} node</span>
+              <span className="panel-count">{treeParentNodes.length} node cha</span>
+            </div>
+          </div>
+        </div>
+
+        <div className={`tree-stage ${isTreeDetailVisible ? 'detail-open' : ''}`.trim()}>
+          <aside className="tree-branch-panel">
+            <div className="tree-branch-panel-inner">
+              <label className="search-field tree-search-card tree-branch-search">
+                <span>Tìm trong nhánh</span>
+                <input
+                  className="search-input"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Tìm node trong nhánh hiện tại"
+                />
+              </label>
+
+              <div className="tree-branch-summary">
+                <div className="tree-branch-summary-item">
+                  <span>Task gốc</span>
+                  <strong title={treeRootTask?.title ?? undefined}>
+                    {treeRootTask ? truncateTitleWords(treeRootTask.title, 4, 34) : '--'}
+                  </strong>
+                </div>
+                <div className="tree-branch-summary-item">
+                  <span>Nhánh cấp 1</span>
+                  <strong>{treeVisibleBranchCount}</strong>
+                </div>
+                <div className="tree-branch-summary-item">
+                  <span>Node đang hiển thị</span>
+                  <strong>{activeTreeTasks.length}</strong>
+                </div>
+              </div>
+
+              <div className="tree-parent-list">
+                <div className="tree-parent-list-header">
+                  <strong>Danh sách node cha</strong>
+                  <span>Chọn nhanh một node để focus trên tree.</span>
+                </div>
+
+                <div className="tree-parent-items">
+                  {treeParentNodes.map(({ node, depth, visibleChildCount }) => (
+                    <button
+                      key={node.id}
+                      type="button"
+                      className={`tree-parent-item ${selectedTaskId === node.id ? 'selected' : ''}`.trim()}
+                      style={{ '--tree-parent-depth': depth }}
+                      onClick={() => handleSelectTask(node.id)}
+                    >
+                      <span className="tree-parent-item-level">Cấp {depth + 1}</span>
+                      <strong title={node.title}>{node.title}</strong>
+                      <div className="tree-parent-item-meta">
+                        <span>{getStatusLabel(node.status)}</span>
+                        <span>{visibleChildCount} node con</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div className="tree-stage-canvas">
+            <TaskHierarchyMap
+              tree={activeTree}
+              usersById={usersById}
+              selectedTaskId={selectedTaskId}
+              onSelect={handleSelectTask}
+              rootTaskId={treeRootTaskId}
+              isDetailOpen={isTreeDetailVisible}
+            />
+          </div>
+
+          {isTreeDetailVisible ? (
+            <aside className="tree-detail-side">
+              <TaskDetailPanel
+                key={`${selectedTask.id}-${selectedTask.updatedAt ?? 'none'}-tree`}
+                currentUser={currentUser}
+                task={selectedTask}
+                tasksById={derivedTasksById}
+                usersById={usersById}
+                historyById={historyById}
+                commentsById={commentsById}
+                visibleIdSet={visibleIdSet}
+                onSelectTask={handleSelectTask}
+                onOpenCreateRoot={canCreateRootTask(currentUser) ? () => setCreateRootOpen(true) : null}
+                onOpenCreateSubtask={() => setCreateSubtaskOpen(true)}
+                onOpenSplit={() => setSplitOpen(true)}
+                onOpenEdit={() => setEditOpen(true)}
+                onUpdateExecution={handleExecutionUpdate}
+                onAddComment={handleAddComment}
+                isSaving={isSaving}
+                className="tree-side-panel"
+                onClose={() => setTreeDetailOpen(false)}
+              />
+            </aside>
+          ) : null}
+        </div>
+      </section>
+    )
+  }
+
+  void renderLegacyTreeWorkspace
+  void renderObsoleteTreeWorkspace
+
+  const renderTreeWorkspace = () => {
+    const isTreeDetailVisible = isTreeDetailOpen && Boolean(selectedTask)
+    const treeStageClassName = [
+      'tree-stage',
+      isTreeDetailVisible ? 'detail-open' : '',
+      isTreeSidebarOpen ? 'sidebar-open' : 'sidebar-closed',
+    ]
+      .filter(Boolean)
+      .join(' ')
+
+    return (
+      <section className="tree-workspace">
+        <div className={treeStageClassName}>
+          {isTreeSidebarOpen ? (
+            <aside className="sidebar-panel tree-list-panel">
+              <div className="tree-list-panel-actions">
+                <button
+                  type="button"
+                  className="ghost-button tree-panel-visibility-button"
+                  onClick={() => setTreeSidebarOpen(false)}
+                >
+                  Ẩn danh sách
+                </button>
+              </div>
+
+              <label className="search-field">
+                <span>Tìm công việc</span>
+                <input
+                  className="search-input"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Tìm theo tiêu đề, người phụ trách hoặc trạng thái"
+                />
+              </label>
+
+              <TreeView
+                tree={folderTree}
+                usersById={usersById}
+                selectedTaskId={selectedTaskId}
+                expandedMap={expandedMap}
+                onToggle={handleToggleExpand}
+                onSelect={handleSelectTaskFromTreeList}
+                searchActive={searchActive}
+                collapsible={false}
+                showChildren={false}
+              />
+            </aside>
+          ) : null}
+
+          <div className="tree-stage-canvas">
+            {!isTreeSidebarOpen ? (
+              <button
+                type="button"
+                className="ghost-button tree-sidebar-floating-toggle"
+                onClick={() => setTreeSidebarOpen(true)}
+              >
+                Mở danh sách
+              </button>
+            ) : null}
+
+            <TaskHierarchyMap
+              tree={activeTree}
+              usersById={usersById}
+              selectedTaskId={selectedTaskId}
+              onSelect={handleSelectTask}
+              rootTaskId={treeRootTaskId}
+              isDetailOpen={isTreeDetailVisible}
+            />
+          </div>
+
+          {isTreeDetailVisible ? (
+            <aside className="tree-detail-side">
+              <TaskDetailPanel
+                key={`${selectedTask.id}-${selectedTask.updatedAt ?? 'none'}-tree`}
+                currentUser={currentUser}
+                task={selectedTask}
+                tasksById={derivedTasksById}
+                usersById={usersById}
+                historyById={historyById}
+                commentsById={commentsById}
+                visibleIdSet={visibleIdSet}
+                onSelectTask={handleSelectTask}
+                onOpenCreateRoot={canCreateRootTask(currentUser) ? () => setCreateRootOpen(true) : null}
+                onOpenCreateSubtask={() => setCreateSubtaskOpen(true)}
+                onOpenSplit={() => setSplitOpen(true)}
+                onOpenEdit={() => setEditOpen(true)}
+                onUpdateExecution={handleExecutionUpdate}
+                onAddComment={handleAddComment}
+                isSaving={isSaving}
+                className="tree-side-panel"
+                onClose={() => setTreeDetailOpen(false)}
+              />
+            </aside>
+          ) : null}
+        </div>
+      </section>
+    )
+  }
 
   if (!currentUser) {
     return (
@@ -736,7 +1011,7 @@ function App() {
   }
 
   return (
-    <div className="workspace-shell">
+    <div className={`workspace-shell ${taskViewMode === 'tree' ? 'tree-shell' : ''}`.trim()}>
       <header className="workspace-topbar">
         <div className="topbar-brand">
           <div className="brand-logo">T</div>

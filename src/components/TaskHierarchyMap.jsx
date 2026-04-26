@@ -1,14 +1,185 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { isTaskLate } from '../utils/taskUtils'
 
-const ZOOM_MIN = 0.65
+const ZOOM_MIN = 0.3
 const ZOOM_MAX = 1.7
 const ZOOM_STEP = 0.12
 const ROOT_BRANCH_HUE = 226
 const BRANCH_HUES = [88, 190, 26, 278, 336, 44, 154]
+const FIT_PADDING_X = 24
+const FIT_PADDING_Y = 20
+const FOCUS_ZOOM_MULTIPLIER = 1.45
+const FOCUS_MIN_ZOOM = 0.92
+const FOCUS_NODE_WIDTH_RATIO = 0.52
+const FOCUS_VIEW_Y_RATIO = 0.34
+const FIT_ZOOM_FLOOR_RATIO = 0.92
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
+}
+
+function getFitView(viewportElement, stackElement) {
+  if (!viewportElement || !stackElement) {
+    return null
+  }
+
+  const viewportWidth = Math.max(0, viewportElement.clientWidth - FIT_PADDING_X * 2)
+  const viewportHeight = Math.max(0, viewportElement.clientHeight - FIT_PADDING_Y * 2)
+  const contentWidth = Math.max(1, stackElement.scrollWidth)
+  const contentHeight = Math.max(1, stackElement.scrollHeight)
+
+  if (!viewportWidth || !viewportHeight) {
+    return null
+  }
+
+  const nextZoom = clamp(
+    Number(Math.min(viewportWidth / contentWidth, viewportHeight / contentHeight, 1).toFixed(2)),
+    ZOOM_MIN,
+    ZOOM_MAX,
+  )
+  const scaledWidth = contentWidth * nextZoom
+  const scaledHeight = contentHeight * nextZoom
+  const nextPan = {
+    x: Math.round(FIT_PADDING_X + (viewportWidth - scaledWidth) / 2),
+    y: Math.round(FIT_PADDING_Y + (viewportHeight - scaledHeight) / 2),
+  }
+
+  return {
+    zoom: nextZoom,
+    pan: nextPan,
+  }
+}
+
+function getMinimumZoom(viewportElement, stackElement) {
+  const fitView = getFitView(viewportElement, stackElement)
+
+  if (!fitView) {
+    return ZOOM_MIN
+  }
+
+  return clamp(
+    Number((Math.min(fitView.zoom, 1) * FIT_ZOOM_FLOOR_RATIO).toFixed(2)),
+    ZOOM_MIN,
+    ZOOM_MAX,
+  )
+}
+
+function clampPanToViewport(viewportElement, stackElement, zoom, pan) {
+  if (!viewportElement || !stackElement || !pan) {
+    return pan
+  }
+
+  const viewportWidth = viewportElement.clientWidth
+  const viewportHeight = viewportElement.clientHeight
+  const contentWidth = Math.max(1, stackElement.scrollWidth * zoom)
+  const contentHeight = Math.max(1, stackElement.scrollHeight * zoom)
+  const centerX = Math.round((viewportWidth - contentWidth) / 2)
+  const centerY = Math.round((viewportHeight - contentHeight) / 2)
+  const lockX = contentWidth <= viewportWidth - FIT_PADDING_X * 2
+  const lockY = contentHeight <= viewportHeight - FIT_PADDING_Y * 2
+  const minX = lockX ? centerX : Math.round(viewportWidth - contentWidth - FIT_PADDING_X)
+  const maxX = lockX ? centerX : FIT_PADDING_X
+  const minY = lockY ? centerY : Math.round(viewportHeight - contentHeight - FIT_PADDING_Y)
+  const maxY = lockY ? centerY : FIT_PADDING_Y
+
+  return {
+    x: clamp(Math.round(pan.x), minX, maxX),
+    y: clamp(Math.round(pan.y), minY, maxY),
+  }
+}
+
+function normalizeView(viewportElement, stackElement, nextZoom, nextPan) {
+  const safeZoomSource = Number.isFinite(nextZoom) ? nextZoom : 1
+  const minZoom = getMinimumZoom(viewportElement, stackElement)
+  const safeZoom = clamp(Number(safeZoomSource.toFixed(2)), minZoom, ZOOM_MAX)
+
+  return {
+    zoom: safeZoom,
+    pan:
+      clampPanToViewport(viewportElement, stackElement, safeZoom, nextPan) ??
+      nextPan,
+  }
+}
+
+function getWheelDeltaPixels(event) {
+  if (event.deltaMode === 1) {
+    return event.deltaY * 16
+  }
+
+  if (event.deltaMode === 2) {
+    return event.deltaY * 160
+  }
+
+  return event.deltaY
+}
+
+function getPointerZoomView(
+  viewportElement,
+  stackElement,
+  currentZoom,
+  currentPan,
+  clientX,
+  clientY,
+  deltaY,
+) {
+  if (!viewportElement || !stackElement) {
+    return null
+  }
+
+  const viewportRect = viewportElement.getBoundingClientRect()
+  const pointerX = clientX - viewportRect.left
+  const pointerY = clientY - viewportRect.top
+  const zoomFactor = Math.exp(-deltaY * 0.0022)
+  const nextZoom = currentZoom * zoomFactor
+  const contentX = (pointerX - currentPan.x) / Math.max(currentZoom, 0.01)
+  const contentY = (pointerY - currentPan.y) / Math.max(currentZoom, 0.01)
+
+  return {
+    zoom: nextZoom,
+    pan: {
+      x: pointerX - contentX * nextZoom,
+      y: pointerY - contentY * nextZoom,
+    },
+  }
+}
+
+function getNodeFocusView(viewportElement, stackElement, nodeElement, currentZoom) {
+  if (!viewportElement || !stackElement || !nodeElement) {
+    return null
+  }
+
+  const safeZoom = Math.max(currentZoom, 0.01)
+  const fitView = getFitView(viewportElement, stackElement)
+
+  if (!fitView) {
+    return null
+  }
+
+  const stackRect = stackElement.getBoundingClientRect()
+  const nodeRect = nodeElement.getBoundingClientRect()
+  const nodeWidth = Math.max(1, nodeRect.width / safeZoom)
+  const nodeCenterX = (nodeRect.left - stackRect.left + nodeRect.width / 2) / safeZoom
+  const nodeCenterY = (nodeRect.top - stackRect.top + nodeRect.height / 2) / safeZoom
+  const focusZoom = clamp(
+    Number(
+      Math.max(
+        fitView.zoom,
+        fitView.zoom * FOCUS_ZOOM_MULTIPLIER,
+        (viewportElement.clientWidth * FOCUS_NODE_WIDTH_RATIO) / nodeWidth,
+        FOCUS_MIN_ZOOM,
+      ).toFixed(2),
+    ),
+    ZOOM_MIN,
+    ZOOM_MAX,
+  )
+
+  return {
+    zoom: focusZoom,
+    pan: {
+      x: Math.round(viewportElement.clientWidth / 2 - nodeCenterX * focusZoom),
+      y: Math.round(viewportElement.clientHeight * FOCUS_VIEW_Y_RATIO - nodeCenterY * focusZoom),
+    },
+  }
 }
 
 function getBranchHue(index) {
@@ -75,6 +246,36 @@ function nodeContainsDescendant(node, targetId) {
   return node.treeChildren.some(
     (child) => child.id === targetId || nodeContainsDescendant(child, targetId),
   )
+}
+
+function collectVisibleEdges(
+  nodes,
+  collapsedMap,
+  depth = 0,
+  branchHue = ROOT_BRANCH_HUE,
+  edges = [],
+) {
+  nodes.forEach((node) => {
+    const nodeHue = depth === 0 ? ROOT_BRANCH_HUE : branchHue
+
+    if (collapsedMap[node.id]) {
+      return
+    }
+
+    node.treeChildren.forEach((child, childIndex) => {
+      const childHue = depth === 0 ? getBranchHue(childIndex) : nodeHue
+
+      edges.push({
+        parentId: node.id,
+        childId: child.id,
+        hue: childHue,
+      })
+
+      collectVisibleEdges([child], collapsedMap, depth + 1, childHue, edges)
+    })
+  })
+
+  return edges
 }
 
 function MindMapBranch({
@@ -205,22 +406,99 @@ function TaskHierarchyMap({
   selectedTaskId,
   onSelect,
   rootTaskId,
-  detailPanelOpen = false,
+  isDetailOpen = false,
 }) {
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 24, y: 24 })
   const [isPanning, setIsPanning] = useState(false)
   const [collapsedMap, setCollapsedMap] = useState({})
+  const [connectorLayer, setConnectorLayer] = useState({
+    width: 0,
+    height: 0,
+    paths: [],
+  })
   const viewportRef = useRef(null)
   const dragRef = useRef(null)
+  const stackRef = useRef(null)
+  const zoomRef = useRef(zoom)
+  const panRef = useRef(pan)
   const collapsedSignature = Object.keys(collapsedMap)
     .filter((taskId) => collapsedMap[taskId])
     .sort()
     .join('|')
+  const visibleEdges = useMemo(
+    () => collectVisibleEdges(tree, collapsedMap),
+    [collapsedSignature, tree],
+  )
 
   useEffect(() => {
-    setZoom(1)
-    setPan({ x: 24, y: 24 })
+    zoomRef.current = zoom
+  }, [zoom])
+
+  useEffect(() => {
+    panRef.current = pan
+  }, [pan])
+
+  const commitView = (nextView) => {
+    if (!nextView?.pan) {
+      return false
+    }
+
+    zoomRef.current = nextView.zoom
+    panRef.current = nextView.pan
+    setZoom((currentZoom) => (currentZoom === nextView.zoom ? currentZoom : nextView.zoom))
+    setPan((currentPan) =>
+      currentPan.x === nextView.pan.x && currentPan.y === nextView.pan.y
+        ? currentPan
+        : nextView.pan,
+    )
+
+    return true
+  }
+
+  const applyView = (nextView) => {
+    if (!nextView) {
+      return false
+    }
+
+    return commitView(
+      normalizeView(
+        viewportRef.current,
+        stackRef.current,
+        nextView.zoom,
+        nextView.pan,
+      ),
+    )
+  }
+
+  const fitTreeToViewport = () => {
+    applyView(getFitView(viewportRef.current, stackRef.current))
+  }
+
+  const focusSelectedNode = () => {
+    if (!selectedTaskId) {
+      return false
+    }
+
+    const viewportElement = viewportRef.current
+    const stackElement = stackRef.current
+
+    if (!viewportElement || !stackElement) {
+      return false
+    }
+
+    const nodeElement = stackElement.querySelector(`[data-node-id="${selectedTaskId}"]`)
+
+    if (!nodeElement) {
+      return false
+    }
+
+    return applyView(
+      getNodeFocusView(viewportElement, stackElement, nodeElement, zoomRef.current),
+    )
+  }
+
+  useEffect(() => {
     setCollapsedMap({})
   }, [rootTaskId])
 
@@ -251,52 +529,153 @@ function TaskHierarchyMap({
   }, [selectedTaskId, tree])
 
   useEffect(() => {
-    if (!selectedTaskId || !viewportRef.current) {
+    let nestedFrameId = 0
+    const frameId = window.requestAnimationFrame(() => {
+      nestedFrameId = window.requestAnimationFrame(() => {
+        if (isDetailOpen && focusSelectedNode()) {
+          return
+        }
+
+        fitTreeToViewport()
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+
+      if (nestedFrameId) {
+        window.cancelAnimationFrame(nestedFrameId)
+      }
+    }
+  }, [collapsedSignature, isDetailOpen, rootTaskId, selectedTaskId, tree])
+
+  useEffect(() => {
+    const handleResize = () => {
+      window.requestAnimationFrame(() => {
+        applyView({
+          zoom: zoomRef.current,
+          pan: panRef.current,
+        })
+      })
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  useEffect(() => {
+    const viewportElement = viewportRef.current
+
+    if (!viewportElement) {
       return
     }
 
-    const viewport = viewportRef.current
-
-    const focusNode = () => {
-      const nodeElement = viewport.querySelector(`[data-node-id="${selectedTaskId}"]`)
-
-      if (!nodeElement) {
+    const handleViewportWheel = (event) => {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        event.stopPropagation()
+        applyView(
+          getPointerZoomView(
+            viewportRef.current,
+            stackRef.current,
+            zoomRef.current,
+            panRef.current,
+            event.clientX,
+            event.clientY,
+            getWheelDeltaPixels(event),
+          ),
+        )
         return
       }
 
-      const viewportRect = viewport.getBoundingClientRect()
-      const nodeRect = nodeElement.getBoundingClientRect()
-      const overlayWidth = detailPanelOpen ? Math.min(viewportRect.width * 0.5, 720) + 28 : 0
-      const targetCenterX =
-        viewportRect.left + Math.max(180, (viewportRect.width - overlayWidth) * 0.45)
-      const targetCenterY = viewportRect.top + viewportRect.height * 0.32
-      const currentCenterX = nodeRect.left + nodeRect.width / 2
-      const currentCenterY = nodeRect.top + nodeRect.height / 2
+      event.preventDefault()
 
-      setPan((currentPan) => ({
-        x: currentPan.x + (targetCenterX - currentCenterX),
-        y: currentPan.y + (targetCenterY - currentCenterY),
-      }))
+      applyView({
+        zoom: zoomRef.current,
+        pan: {
+          x: panRef.current.x - event.deltaX,
+          y: panRef.current.y - event.deltaY,
+        },
+      })
     }
 
-    const frameId = window.requestAnimationFrame(focusNode)
+    viewportElement.addEventListener('wheel', handleViewportWheel, { passive: false })
 
-    return () => window.cancelAnimationFrame(frameId)
-  }, [collapsedSignature, detailPanelOpen, rootTaskId, selectedTaskId, zoom])
+    return () => {
+      viewportElement.removeEventListener('wheel', handleViewportWheel)
+    }
+  }, [])
+
+  useEffect(() => {
+    const stackElement = stackRef.current
+
+    if (!stackElement) {
+      return
+    }
+
+    const updateConnectorLayer = () => {
+      const stackRect = stackElement.getBoundingClientRect()
+      const nextPaths = visibleEdges
+        .map((edge) => {
+          const parentElement = stackElement.querySelector(`[data-node-id="${edge.parentId}"]`)
+          const childElement = stackElement.querySelector(`[data-node-id="${edge.childId}"]`)
+
+          if (!parentElement || !childElement) {
+            return null
+          }
+
+          const parentRect = parentElement.getBoundingClientRect()
+          const childRect = childElement.getBoundingClientRect()
+          const startX =
+            (parentRect.left - stackRect.left + parentRect.width / 2) / zoom
+          const startY = (parentRect.bottom - stackRect.top - 4) / zoom
+          const endX = (childRect.left - stackRect.left + childRect.width / 2) / zoom
+          const endY = (childRect.top - stackRect.top + 4) / zoom
+          const curveOffset = Math.max(26, Math.min(72, (endY - startY) * 0.52))
+
+          return {
+            id: `${edge.parentId}-${edge.childId}`,
+            hue: edge.hue,
+            d: `M ${startX} ${startY} C ${startX} ${startY + curveOffset}, ${endX} ${endY - curveOffset}, ${endX} ${endY}`,
+          }
+        })
+        .filter(Boolean)
+
+      setConnectorLayer({
+        width: stackElement.scrollWidth,
+        height: stackElement.scrollHeight,
+        paths: nextPaths,
+      })
+    }
+
+    updateConnectorLayer()
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updateConnectorLayer())
+        : null
+
+    resizeObserver?.observe(stackElement)
+    window.addEventListener('resize', updateConnectorLayer)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updateConnectorLayer)
+    }
+  }, [collapsedSignature, rootTaskId, tree, visibleEdges, zoom])
 
   const updateZoom = (direction) => {
-    setZoom((currentZoom) =>
-      clamp(
-        Number((currentZoom + direction * ZOOM_STEP).toFixed(2)),
-        ZOOM_MIN,
-        ZOOM_MAX,
-      ),
-    )
+    applyView({
+      zoom: zoomRef.current + direction * ZOOM_STEP,
+      pan: panRef.current,
+    })
   }
 
   const resetView = () => {
-    setZoom(1)
-    setPan({ x: 24, y: 24 })
+    fitTreeToViewport()
   }
 
   const handlePointerDown = (event) => {
@@ -312,8 +691,8 @@ function TaskHierarchyMap({
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      originX: pan.x,
-      originY: pan.y,
+      originX: panRef.current.x,
+      originY: panRef.current.y,
     }
     setIsPanning(true)
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -327,9 +706,12 @@ function TaskHierarchyMap({
     const deltaX = event.clientX - dragRef.current.startX
     const deltaY = event.clientY - dragRef.current.startY
 
-    setPan({
-      x: dragRef.current.originX + deltaX,
-      y: dragRef.current.originY + deltaY,
+    applyView({
+      zoom: zoomRef.current,
+      pan: {
+        x: dragRef.current.originX + deltaX,
+        y: dragRef.current.originY + deltaY,
+      },
     })
   }
 
@@ -344,21 +726,6 @@ function TaskHierarchyMap({
 
     dragRef.current = null
     setIsPanning(false)
-  }
-
-  const handleWheel = (event) => {
-    if (event.ctrlKey || event.metaKey) {
-      event.preventDefault()
-      updateZoom(event.deltaY < 0 ? 1 : -1)
-      return
-    }
-
-    event.preventDefault()
-
-    setPan((currentPan) => ({
-      x: currentPan.x - event.deltaX,
-      y: currentPan.y - event.deltaY,
-    }))
   }
 
   const handleToggleCollapse = (node, isCollapsed) => {
@@ -417,7 +784,6 @@ function TaskHierarchyMap({
         onPointerMove={handlePointerMove}
         onPointerUp={stopPanning}
         onPointerCancel={stopPanning}
-        onWheel={handleWheel}
       >
         <div
           className="mindmap-pan-layer"
@@ -427,7 +793,31 @@ function TaskHierarchyMap({
             className="mindmap-scale-layer"
             style={{ transform: `scale(${zoom})` }}
           >
-            <div className="mindmap-stack">
+            <div className="mindmap-stack" ref={stackRef}>
+              {connectorLayer.paths.length > 0 ? (
+                <svg
+                  className="mindmap-connector-layer"
+                  width={connectorLayer.width}
+                  height={connectorLayer.height}
+                  viewBox={`0 0 ${connectorLayer.width} ${connectorLayer.height}`}
+                  aria-hidden="true"
+                >
+                  {connectorLayer.paths.map((path) => (
+                    <g key={path.id}>
+                      <path
+                        d={path.d}
+                        className="mindmap-connector-glow"
+                        stroke={`hsl(${path.hue} 78% 62%)`}
+                      />
+                      <path
+                        d={path.d}
+                        className="mindmap-connector-core"
+                        stroke={`hsl(${path.hue} 58% 42%)`}
+                      />
+                    </g>
+                  ))}
+                </svg>
+              ) : null}
               {tree.map((node) => (
                 <MindMapBranch
                   key={node.id}

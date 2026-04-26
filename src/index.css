@@ -3170,7 +3170,7 @@ body,
 }
 
 .tree-canvas-section {
-  min-height: 760px;
+  min-height: 840px;
   display: grid;
   grid-template-rows: auto auto;
   padding: 0 22px 22px;
@@ -3187,7 +3187,7 @@ body,
 
 .tree-canvas-frame {
   position: relative;
-  min-height: 680px;
+  min-height: 720px;
   overflow: hidden;
   border-radius: 28px;
   border: 1px solid var(--border-soft);
@@ -3198,9 +3198,13 @@ body,
   box-shadow: inset 0 1px 0 rgba(99, 102, 241, 0.08);
 }
 
+.tree-canvas-frame.detail-open {
+  min-height: 780px;
+}
+
 .tree-canvas-frame>.mindmap-surface {
   height: auto;
-  min-height: 680px;
+  min-height: 720px;
   margin: 0;
   border: none;
   border-radius: 0;
@@ -3208,15 +3212,19 @@ body,
   background: transparent;
 }
 
+.tree-canvas-frame.detail-open>.mindmap-surface {
+  min-height: 780px;
+}
+
 .tree-detail-overlay {
   position: absolute;
   top: 16px;
-  right: 16px;
+  left: 16px;
   bottom: 16px;
-  width: min(50%, 720px);
-  min-width: 420px;
+  width: min(calc(70% - 8px), calc(100% - 280px));
+  min-width: 560px;
   z-index: 40;
-  transform: translateX(calc(100% + 24px));
+  transform: translateX(calc(-100% - 24px));
   transition: transform 0.28s ease;
 }
 
@@ -3393,7 +3401,8 @@ body,
   }
 
   .tree-detail-overlay {
-    width: min(56%, 720px);
+    width: min(calc(70% - 8px), calc(100% - 240px));
+    min-width: 480px;
   }
 }
 
@@ -3432,12 +3441,12 @@ body,
   }
 
   .tree-canvas-section {
-    min-height: 620px;
+    min-height: 660px;
     padding: 0 14px 14px;
   }
 
   .tree-canvas-frame {
-    min-height: 560px;
+    min-height: 600px;
   }
 
   .tree-detail-overlay {
@@ -3557,10 +3566,14 @@ body,
 
 .mindmap-surface {
   height: auto;
-  min-height: 680px;
+  min-height: 720px;
   display: grid;
   grid-template-rows: auto auto;
   overflow: hidden;
+}
+
+.tree-canvas-frame.detail-open .mindmap-surface {
+  min-height: 780px;
 }
 
 .mindmap-surface.is-panning .mindmap-viewport {
@@ -3643,10 +3656,14 @@ body,
 
 .mindmap-viewport {
   position: relative;
-  min-height: 600px;
+  min-height: 640px;
   overflow: hidden;
   cursor: grab;
   touch-action: none;
+}
+
+.tree-canvas-frame.detail-open .mindmap-viewport {
+  min-height: 700px;
 }
 
 .mindmap-pan-layer {
@@ -3820,7 +3837,8 @@ body,
   }
 
   .tree-detail-overlay {
-    width: min(58%, 720px);
+    width: min(calc(70% - 8px), calc(100% - 240px));
+    min-width: 480px;
   }
 }
 
@@ -3853,17 +3871,17 @@ body,
   }
 
   .tree-canvas-section {
-    min-height: 620px;
+    min-height: 660px;
   }
 
   .tree-canvas-frame,
   .tree-canvas-frame>.mindmap-surface,
   .mindmap-surface {
-    min-height: 560px;
+    min-height: 600px;
   }
 
   .mindmap-viewport {
-    min-height: 500px;
+    min-height: 540px;
   }
 }
 
@@ -5439,6 +5457,66 @@ html[data-theme='dark'] .mindmap-collapse-button {
 }
 
 /* ============================================================
+   SVG CONNECTOR LINES
+   ============================================================ */
+.mindmap-scale-layer {
+  position: relative;
+  display: inline-block;
+}
+
+.mindmap-stack {
+  position: relative;
+  isolation: isolate;
+}
+
+.mindmap-connector-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mindmap-connector-glow,
+.mindmap-connector-core {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mindmap-connector-glow {
+  stroke-width: 8px;
+  opacity: 0.16;
+}
+
+.mindmap-connector-core {
+  stroke-width: 3.25px;
+  opacity: 0.94;
+}
+
+.mindmap-branch {
+  position: relative;
+  z-index: 1;
+}
+
+.mindmap-branch.vertical.has-children > .mindmap-card-shell::after,
+.mindmap-children::before,
+.mindmap-child::before,
+.mindmap-children > .mindmap-child::after {
+  display: none !important;
+}
+
+html[data-theme='dark'] .mindmap-connector-glow {
+  opacity: 0.22;
+}
+
+html[data-theme='dark'] .mindmap-connector-core {
+  opacity: 0.98;
+}
+
+/* ============================================================
    FINLY-INSPIRED LIGHT / DARK PALETTES
    ============================================================ */
 html[data-theme='light'] {
@@ -5774,4 +5852,1682 @@ html[data-theme='light'] .modal-backdrop {
 
 html[data-theme='dark'] .modal-backdrop {
   background: rgba(12, 11, 16, 0.7) !important;
+}
+
+/* ============================================================
+   TREE SIDE DETAIL LAYOUT
+   ============================================================ */
+.workspace-grid.tree-layout .tree-workspace {
+  min-height: 0;
+  gap: 18px;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.workspace-shell.tree-shell {
+  height: auto;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.workspace-shell.tree-shell .workspace-grid.tree-layout {
+  flex: none;
+  min-height: auto;
+  padding: 18px 24px 24px;
+  overflow: visible;
+  align-items: stretch;
+}
+
+.workspace-shell.tree-shell .tree-workspace {
+  height: auto;
+  min-height: 0;
+  gap: 18px;
+  grid-template-rows: auto auto;
+  overflow: visible;
+}
+
+.tree-workspace-floating-header {
+  gap: 14px;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tree-search-float {
+  padding: 18px 20px;
+  box-shadow: 0 20px 44px rgba(120, 99, 191, 0.12);
+}
+
+.tree-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: 100vh;
+  min-height: 100vh;
+  border-radius: 30px;
+  border: 1px solid var(--border-soft);
+  background:
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.1), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(248, 250, 255, 0.96), rgba(240, 244, 255, 0.98));
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.tree-stage.detail-open {
+  grid-template-columns: minmax(280px, 3fr) minmax(420px, 7fr);
+}
+
+.tree-stage-canvas {
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+.tree-stage .tree-canvas-section {
+  height: 100%;
+  min-height: 100%;
+  padding: 0;
+  gap: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.tree-stage .tree-canvas-frame,
+.tree-stage .mindmap-surface {
+  min-height: 0;
+  height: 100%;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tree-stage .tree-canvas-frame.detail-open,
+.tree-stage .tree-canvas-frame.detail-open > .mindmap-surface,
+.tree-stage.detail-open .tree-canvas-frame,
+.tree-stage.detail-open .tree-canvas-frame > .mindmap-surface {
+  min-height: 0;
+}
+
+.tree-stage .mindmap-surface {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.tree-stage .mindmap-surface-toolbar {
+  padding: 18px 22px 14px;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tree-stage .mindmap-viewport {
+  height: 100%;
+  min-height: 0;
+}
+
+.tree-detail-side {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--border-soft);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04)),
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.08), transparent 36%);
+}
+
+.tree-side-panel {
+  flex: 1;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.workspace-shell.tree-shell .tree-stage {
+  min-height: 100vh;
+}
+
+.workspace-shell.tree-shell .tree-stage .tree-canvas-frame,
+.workspace-shell.tree-shell .tree-stage .mindmap-surface,
+.workspace-shell.tree-shell .tree-side-panel {
+  min-height: 0;
+}
+
+.workspace-shell.tree-shell .tree-stage .mindmap-surface {
+  height: 100%;
+}
+
+.workspace-shell.tree-shell .tree-stage .mindmap-viewport {
+  height: 100%;
+  min-height: 0;
+}
+
+.tree-side-panel .detail-panel-utility,
+.tree-side-panel .detail-header,
+.tree-side-panel .detail-tab-row {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tree-side-panel .detail-panel-utility {
+  padding: 18px 22px 0;
+}
+
+.tree-side-panel .detail-header {
+  padding: 10px 22px 22px;
+}
+
+.tree-side-panel .detail-tab-row {
+  padding-left: 22px;
+  padding-right: 22px;
+}
+
+.tree-side-panel .detail-content {
+  padding: 20px 22px 24px;
+}
+
+html[data-theme='light'] .tree-stage,
+html[data-theme='dark'] .tree-stage {
+  background:
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.08), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.08), transparent 28%),
+    var(--finly-panel-bg) !important;
+  border-color: var(--finly-stroke) !important;
+  box-shadow: var(--finly-shadow) !important;
+}
+
+html[data-theme='light'] .tree-detail-side,
+html[data-theme='dark'] .tree-detail-side {
+  border-left-color: var(--finly-stroke) !important;
+}
+
+@media (max-width: 1200px) {
+  .tree-stage.detail-open {
+    grid-template-columns: minmax(260px, 3fr) minmax(360px, 7fr);
+  }
+}
+
+@media (max-width: 960px) {
+  .workspace-shell.tree-shell {
+    height: auto;
+    overflow: visible;
+  }
+
+  .tree-workspace-floating-header {
+    padding-bottom: 0 !important;
+  }
+
+  .tree-stage,
+  .tree-stage.detail-open {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .tree-stage .tree-canvas-frame,
+  .tree-stage .mindmap-surface,
+  .tree-side-panel {
+    min-height: 600px;
+  }
+
+  .tree-stage .mindmap-viewport {
+    min-height: 520px;
+  }
+
+  .tree-detail-side {
+    border-left: none;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  html[data-theme='light'] .tree-detail-side,
+  html[data-theme='dark'] .tree-detail-side {
+    border-top-color: var(--finly-stroke) !important;
+  }
+}
+
+/* Tree scope layout refresh */
+.workspace-shell.tree-shell .tree-workspace {
+  min-height: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.tree-workspace-floating-header {
+  padding: 0 2px !important;
+}
+
+.tree-header-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.tree-stage {
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 18px;
+  height: auto !important;
+  min-height: min(960px, calc(100vh - 248px));
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.tree-stage.detail-open {
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(360px, 420px);
+}
+
+.tree-branch-panel,
+.tree-detail-side {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--finly-stroke, var(--border-soft));
+  border-radius: 28px;
+  background: var(--finly-panel-bg, rgba(255, 255, 255, 0.94));
+  box-shadow: var(--finly-shadow, var(--shadow-lg));
+  overflow: hidden;
+}
+
+.tree-branch-panel {
+  display: flex;
+}
+
+.tree-branch-panel-inner {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 18px;
+  padding: 20px;
+}
+
+.tree-branch-search {
+  padding: 0;
+}
+
+.tree-branch-search span {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.tree-branch-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.tree-branch-summary-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(79, 70, 229, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(239, 244, 255, 0.96));
+}
+
+.tree-branch-summary-item span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tree-branch-summary-item strong {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+}
+
+.tree-parent-list {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+}
+
+.tree-parent-list-header {
+  display: grid;
+  gap: 6px;
+}
+
+.tree-parent-list-header strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.tree-parent-list-header span {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.tree-parent-items {
+  min-height: 0;
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.tree-parent-item {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  padding: 14px 16px 14px calc(16px + var(--tree-parent-depth, 0) * 14px);
+  border-radius: 22px;
+  border: 1px solid rgba(79, 70, 229, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 255, 0.98));
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.08);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.tree-parent-item:hover,
+.tree-parent-item:focus-visible,
+.tree-parent-item.selected {
+  transform: translateY(-2px);
+  border-color: rgba(79, 70, 229, 0.34);
+  box-shadow: 0 18px 34px rgba(79, 70, 229, 0.14);
+}
+
+.tree-parent-item-level {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tree-parent-item strong {
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+}
+
+.tree-parent-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tree-parent-item-meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.08);
+}
+
+.tree-stage-canvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top, rgba(79, 70, 229, 0.12), transparent 38%),
+    radial-gradient(circle at bottom left, rgba(6, 182, 212, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(248, 250, 255, 0.98), rgba(238, 244, 255, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(79, 70, 229, 0.08),
+    0 20px 44px rgba(79, 70, 229, 0.12);
+}
+
+.tree-stage-canvas > .mindmap-surface {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tree-stage-canvas .mindmap-surface {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.tree-stage-canvas .mindmap-surface-toolbar {
+  padding: 18px 22px 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.18)) !important;
+  border-bottom: 1px solid rgba(79, 70, 229, 0.12);
+  box-shadow: none !important;
+}
+
+.tree-stage-canvas .mindmap-viewport {
+  min-height: 0;
+  height: 100%;
+  background:
+    radial-gradient(circle at top, rgba(79, 70, 229, 0.08), transparent 40%),
+    linear-gradient(rgba(79, 70, 229, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 70, 229, 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(248, 250, 255, 0.98), rgba(238, 244, 255, 0.96));
+  background-size: auto, 32px 32px, 32px 32px, auto;
+}
+
+.tree-stage-canvas .mindmap-stack {
+  min-width: max-content;
+  padding: 24px 32px 120px;
+}
+
+.tree-detail-side {
+  display: flex;
+  background:
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.1), transparent 36%),
+    linear-gradient(180deg, rgba(252, 253, 255, 0.98), rgba(238, 244, 255, 0.98)) !important;
+}
+
+.tree-side-panel {
+  flex: 1;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html[data-theme='light'] .tree-branch-panel,
+html[data-theme='dark'] .tree-branch-panel,
+html[data-theme='light'] .tree-detail-side,
+html[data-theme='dark'] .tree-detail-side {
+  border-color: var(--finly-stroke) !important;
+  box-shadow: var(--finly-shadow) !important;
+}
+
+html[data-theme='light'] .tree-stage-canvas,
+html[data-theme='dark'] .tree-stage-canvas {
+  box-shadow:
+    inset 0 0 0 1px rgba(79, 70, 229, 0.08),
+    0 20px 44px rgba(79, 70, 229, 0.12) !important;
+}
+
+@media (max-width: 1320px) {
+  .tree-stage.detail-open {
+    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr) minmax(320px, 380px);
+  }
+}
+
+@media (max-width: 1080px) {
+  .tree-stage,
+  .tree-stage.detail-open {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .tree-branch-panel,
+  .tree-stage-canvas,
+  .tree-detail-side {
+    min-height: 520px;
+  }
+
+  .tree-header-stats {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .tree-branch-panel-inner {
+    padding: 16px;
+  }
+
+  .tree-parent-item {
+    padding-right: 14px;
+    padding-left: calc(14px + var(--tree-parent-depth, 0) * 10px);
+  }
+
+  .tree-stage-canvas .mindmap-surface-toolbar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .tree-stage-canvas .mindmap-stack {
+    padding: 20px 18px 88px;
+  }
+}
+
+/* Tree mode: folder-like sidebar + draw.io style canvas */
+.workspace-shell.tree-shell .workspace-grid.tree-layout {
+  padding: 0 0 24px;
+  overflow: visible;
+}
+
+.workspace-shell.tree-shell .tree-workspace {
+  min-height: 0;
+  gap: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.workspace-shell.tree-shell .tree-stage {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 18px;
+  min-height: calc(100vh - 224px);
+  padding: 18px 24px 24px;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  background:
+    linear-gradient(rgba(79, 70, 229, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 70, 229, 0.07) 1px, transparent 1px),
+    radial-gradient(circle at top, rgba(79, 70, 229, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(244, 247, 255, 0.98), rgba(233, 240, 255, 0.98)) !important;
+  background-size: 32px 32px, 32px 32px, auto, auto !important;
+}
+
+.workspace-shell.tree-shell .tree-stage.detail-open {
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr) minmax(360px, 420px);
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-closed.detail-open {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+}
+
+.tree-list-panel,
+.tree-detail-side {
+  position: relative;
+  z-index: 2;
+}
+
+.tree-list-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tree-list-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 18px 0;
+}
+
+.tree-panel-visibility-button,
+.tree-sidebar-floating-toggle {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+}
+
+.tree-stage-canvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.tree-sidebar-floating-toggle {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(14px);
+}
+
+.tree-stage-canvas > .mindmap-surface,
+.tree-stage-canvas .mindmap-surface,
+.tree-stage-canvas .mindmap-viewport {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.tree-stage-canvas > .mindmap-surface {
+  flex: 1;
+  min-height: 0;
+}
+
+.tree-stage-canvas .mindmap-surface {
+  position: relative;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.tree-stage-canvas .mindmap-surface-toolbar {
+  padding: 16px 24px 8px 84px;
+  background: transparent !important;
+  border-bottom: none;
+}
+
+.tree-stage.sidebar-open .tree-stage-canvas .mindmap-surface-toolbar {
+  padding-left: 24px;
+}
+
+.tree-stage-canvas .mindmap-viewport {
+  min-height: calc(100vh - 312px);
+}
+
+.tree-stage-canvas .mindmap-stack {
+  min-width: max-content;
+  padding: 56px 72px 180px;
+}
+
+.tree-detail-side {
+  background:
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.1), transparent 36%),
+    linear-gradient(180deg, rgba(252, 253, 255, 0.98), rgba(238, 244, 255, 0.98)) !important;
+}
+
+@media (max-width: 1280px) {
+  .workspace-shell.tree-shell .tree-stage.detail-open {
+    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(320px, 380px);
+  }
+
+  .workspace-shell.tree-shell .tree-stage.sidebar-closed.detail-open {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  }
+}
+
+@media (max-width: 1080px) {
+  .workspace-shell.tree-shell .workspace-grid.tree-layout {
+    padding: 0 0 20px;
+  }
+
+  .workspace-shell.tree-shell .tree-stage,
+  .workspace-shell.tree-shell .tree-stage.detail-open,
+  .workspace-shell.tree-shell .tree-stage.sidebar-closed,
+  .workspace-shell.tree-shell .tree-stage.sidebar-closed.detail-open {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 16px;
+  }
+
+  .tree-list-panel,
+  .tree-stage-canvas,
+  .tree-detail-side {
+    min-height: 520px;
+  }
+
+  .tree-stage-canvas .mindmap-surface-toolbar,
+  .tree-stage.sidebar-open .tree-stage-canvas .mindmap-surface-toolbar {
+    padding: 16px 16px 8px;
+  }
+
+  .tree-sidebar-floating-toggle {
+    top: 16px;
+    left: 16px;
+  }
+}
+
+@media (max-width: 720px) {
+  .tree-list-panel-actions {
+    padding: 14px 14px 0;
+  }
+
+  .tree-stage-canvas .mindmap-stack {
+    padding: 48px 20px 120px;
+  }
+}
+
+/* Tree canvas sits in the background; only list/detail stay boxed */
+.workspace-shell.tree-shell .tree-stage {
+  display: block !important;
+  position: relative;
+  min-height: calc(100vh - 224px);
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas > .mindmap-surface {
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-shell.tree-shell .tree-list-panel,
+.workspace-shell.tree-shell .tree-detail-side {
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  z-index: 3;
+  max-height: calc(100% - 48px);
+}
+
+.workspace-shell.tree-shell .tree-list-panel {
+  left: 24px;
+  width: min(360px, calc(100vw - 48px));
+}
+
+.workspace-shell.tree-shell .tree-detail-side {
+  right: 24px;
+  width: min(420px, calc(100vw - 48px));
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-open .tree-stage-canvas .mindmap-surface-toolbar {
+  padding-left: 404px;
+}
+
+.workspace-shell.tree-shell .tree-stage.detail-open .tree-stage-canvas .mindmap-surface-toolbar {
+  padding-right: 444px;
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-surface-toolbar {
+  padding-left: 404px;
+  padding-right: 444px;
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-open .tree-stage-canvas .mindmap-stack {
+  padding-left: 440px;
+}
+
+.workspace-shell.tree-shell .tree-stage.detail-open .tree-stage-canvas .mindmap-stack {
+  padding-right: 500px;
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-stack {
+  padding-left: 440px;
+  padding-right: 500px;
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-closed .tree-stage-canvas .mindmap-surface-toolbar,
+.workspace-shell.tree-shell .tree-stage.sidebar-closed .tree-stage-canvas .mindmap-stack {
+  padding-left: 24px;
+}
+
+.workspace-shell.tree-shell .tree-stage:not(.detail-open) .tree-stage-canvas .mindmap-surface-toolbar {
+  padding-right: 24px;
+}
+
+.workspace-shell.tree-shell .tree-stage:not(.detail-open) .tree-stage-canvas .mindmap-stack {
+  padding-right: 72px;
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-closed .tree-sidebar-floating-toggle {
+  top: 20px;
+  left: 24px;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-pan-layer,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-scale-layer,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-stack,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-connector-layer {
+  background: transparent !important;
+}
+
+@media (max-width: 1280px) {
+  .workspace-shell.tree-shell .tree-list-panel {
+    width: min(320px, calc(100vw - 48px));
+  }
+
+  .workspace-shell.tree-shell .tree-detail-side {
+    width: min(360px, calc(100vw - 48px));
+  }
+
+  .workspace-shell.tree-shell .tree-stage.sidebar-open .tree-stage-canvas .mindmap-surface-toolbar,
+  .workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-surface-toolbar {
+    padding-left: 360px;
+  }
+
+  .workspace-shell.tree-shell .tree-stage.detail-open .tree-stage-canvas .mindmap-surface-toolbar,
+  .workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-surface-toolbar {
+    padding-right: 384px;
+  }
+
+  .workspace-shell.tree-shell .tree-stage.sidebar-open .tree-stage-canvas .mindmap-stack,
+  .workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-stack {
+    padding-left: 392px;
+  }
+
+  .workspace-shell.tree-shell .tree-stage.detail-open .tree-stage-canvas .mindmap-stack,
+  .workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-stack {
+    padding-right: 424px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .workspace-shell.tree-shell .tree-stage {
+    display: grid !important;
+    position: relative;
+    padding: 16px !important;
+  }
+
+  .workspace-shell.tree-shell .tree-stage-canvas {
+    position: relative;
+    inset: auto;
+  }
+
+  .workspace-shell.tree-shell .tree-list-panel,
+  .workspace-shell.tree-shell .tree-detail-side {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    max-height: none;
+  }
+
+  .workspace-shell.tree-shell .tree-stage.sidebar-open .tree-stage-canvas .mindmap-surface-toolbar,
+  .workspace-shell.tree-shell .tree-stage.detail-open .tree-stage-canvas .mindmap-surface-toolbar,
+  .workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-surface-toolbar,
+  .workspace-shell.tree-shell .tree-stage.sidebar-closed .tree-stage-canvas .mindmap-surface-toolbar,
+  .workspace-shell.tree-shell .tree-stage:not(.detail-open) .tree-stage-canvas .mindmap-surface-toolbar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .workspace-shell.tree-shell .tree-stage.sidebar-open .tree-stage-canvas .mindmap-stack,
+  .workspace-shell.tree-shell .tree-stage.detail-open .tree-stage-canvas .mindmap-stack,
+  .workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-stack,
+  .workspace-shell.tree-shell .tree-stage.sidebar-closed .tree-stage-canvas .mindmap-stack,
+  .workspace-shell.tree-shell .tree-stage:not(.detail-open) .tree-stage-canvas .mindmap-stack {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+/* Draw.io-style paper canvas for tree */
+.workspace-shell.tree-shell .tree-stage {
+  background-color: #eef3f8 !important;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px) !important;
+  background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas,
+.workspace-shell.tree-shell .tree-stage-canvas > .mindmap-surface,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface {
+  background: transparent !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-viewport {
+  background-color: #eef3f8 !important;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px) !important;
+  background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-stack {
+  background-color: #ffffff !important;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(59, 130, 246, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.12) 1px, transparent 1px) !important;
+  background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px !important;
+  background-position: 0 0, 0 0, 0 0, 0 0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.94) inset !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface-toolbar {
+  background: rgba(223, 227, 232, 0.92) !important;
+  backdrop-filter: blur(10px);
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface-hint strong,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface-hint span,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-zoom-badge {
+  color: #334155 !important;
+}
+
+/* Final tree tuning */
+.kpi-strip {
+  gap: 10px;
+  padding: 12px 24px;
+}
+
+.kpi-card {
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.kpi-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+}
+
+.kpi-label {
+  font-size: 11px;
+}
+
+.kpi-value {
+  font-size: 23px;
+  margin-top: 1px;
+}
+
+.workspace-shell.tree-shell .tree-stage {
+  --tree-list-width: min(340px, calc(100vw - 48px));
+  --tree-detail-width: min(65vw, calc(100vw - 48px));
+  min-height: calc(100vh - 168px);
+}
+
+.workspace-shell.tree-shell .tree-list-panel {
+  width: var(--tree-list-width);
+}
+
+.workspace-shell.tree-shell .tree-detail-side {
+  width: var(--tree-detail-width);
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-open .tree-stage-canvas .mindmap-surface-toolbar,
+.workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-surface-toolbar {
+  padding-left: calc(var(--tree-list-width) + 44px);
+}
+
+.workspace-shell.tree-shell .tree-stage.detail-open .tree-stage-canvas .mindmap-surface-toolbar,
+.workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-surface-toolbar {
+  padding-right: calc(var(--tree-detail-width) + 28px);
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-open .tree-stage-canvas .mindmap-stack,
+.workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-stack {
+  padding-left: calc(var(--tree-list-width) + 80px);
+}
+
+.workspace-shell.tree-shell .tree-stage.detail-open .tree-stage-canvas .mindmap-stack,
+.workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open .tree-stage-canvas .mindmap-stack {
+  padding-right: calc(var(--tree-detail-width) + 72px);
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-viewport {
+  min-height: calc(100vh - 204px);
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle {
+  top: 24px;
+  left: 22px;
+  width: 58px;
+  min-height: 92px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(238, 244, 255, 0.96)) !important;
+  box-shadow:
+    0 14px 28px rgba(79, 70, 229, 0.16),
+    0 0 0 1px rgba(255, 255, 255, 0.84) inset;
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle::before {
+  content: '\2630';
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: #4338ca;
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle::after {
+  content: '>';
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: #6366f1;
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle:hover,
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(79, 70, 229, 0.34);
+  box-shadow:
+    0 18px 34px rgba(79, 70, 229, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.88) inset;
+}
+
+@media (max-width: 1280px) {
+  .workspace-shell.tree-shell .tree-stage {
+    --tree-list-width: min(312px, calc(100vw - 48px));
+    --tree-detail-width: min(62vw, calc(100vw - 48px));
+  }
+}
+
+@media (max-width: 1080px) {
+  .workspace-shell.tree-shell .tree-stage {
+    min-height: 0;
+  }
+
+  .workspace-shell.tree-shell .tree-stage-canvas .mindmap-viewport {
+    min-height: 620px;
+  }
+
+  .workspace-shell.tree-shell .tree-sidebar-floating-toggle {
+    width: auto;
+    min-height: 42px;
+    padding: 0 14px;
+    flex-direction: row;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .workspace-shell.tree-shell .tree-sidebar-floating-toggle::after {
+    content: 'Mo danh sach';
+    font-size: 13px;
+    letter-spacing: 0;
+  }
+}
+
+/* Draw.io-like tree layout while preserving current panel sizes */
+.workspace-shell.tree-shell .tree-stage {
+  display: grid !important;
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 0 !important;
+  gap: 0;
+  align-items: stretch;
+  overflow: hidden !important;
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-open {
+  grid-template-columns: var(--tree-list-width) minmax(0, 1fr);
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open {
+  grid-template-columns: var(--tree-list-width) minmax(0, 1fr) var(--tree-detail-width);
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-closed.detail-open {
+  grid-template-columns: minmax(0, 1fr) var(--tree-detail-width);
+}
+
+.workspace-shell.tree-shell .tree-list-panel,
+.workspace-shell.tree-shell .tree-detail-side {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: auto !important;
+  max-height: none;
+  min-height: 0;
+  height: auto;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.tree-shell .tree-list-panel {
+  border-right: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.workspace-shell.tree-shell .tree-detail-side {
+  border-left: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas {
+  position: relative;
+  inset: auto;
+  min-height: calc(100vh - 168px);
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas > .mindmap-surface {
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-shell.tree-shell .tree-stage .tree-stage-canvas .mindmap-surface-toolbar {
+  padding: 16px 20px 10px !important;
+}
+
+.workspace-shell.tree-shell .tree-stage .tree-stage-canvas .mindmap-stack {
+  padding: 56px 72px 180px !important;
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-closed .tree-sidebar-floating-toggle {
+  top: 18px;
+  left: 18px;
+}
+
+@media (max-width: 1080px) {
+  .workspace-shell.tree-shell .tree-stage,
+  .workspace-shell.tree-shell .tree-stage.sidebar-open,
+  .workspace-shell.tree-shell .tree-stage.sidebar-open.detail-open,
+  .workspace-shell.tree-shell .tree-stage.sidebar-closed,
+  .workspace-shell.tree-shell .tree-stage.sidebar-closed.detail-open {
+    grid-template-columns: 1fr;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 16px !important;
+    gap: 16px;
+  }
+
+  .workspace-shell.tree-shell .tree-list-panel,
+  .workspace-shell.tree-shell .tree-detail-side {
+    border-left: none;
+    border-right: none;
+    border-radius: 24px !important;
+    box-shadow: var(--finly-shadow) !important;
+  }
+
+  .workspace-shell.tree-shell .tree-stage .tree-stage-canvas .mindmap-surface-toolbar {
+    padding: 16px 16px 8px !important;
+  }
+
+  .workspace-shell.tree-shell .tree-stage .tree-stage-canvas .mindmap-stack {
+    padding: 48px 20px 120px !important;
+  }
+}
+
+/* Compact tree controls */
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface-toolbar {
+  justify-content: flex-end;
+  min-height: 48px;
+  padding: 10px 14px 8px !important;
+  background: rgba(255, 255, 255, 0.34) !important;
+  backdrop-filter: blur(8px);
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface-hint {
+  display: none;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-control-group {
+  gap: 6px;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-control-button,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-zoom-badge {
+  min-height: 30px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-control-button {
+  min-width: 30px;
+  padding: 0 10px;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-control-button.reset {
+  min-width: 58px;
+  padding: 0 12px;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-zoom-badge {
+  min-width: 52px;
+  padding: 0 8px;
+}
+
+/* Small tab-like hide controls */
+.workspace-shell.tree-shell .tree-list-panel-actions {
+  padding: 10px 10px 0;
+}
+
+.workspace-shell.tree-shell .tree-panel-visibility-button,
+.workspace-shell.tree-shell .tree-side-panel .detail-close-button {
+  min-width: 28px;
+  width: 28px;
+  min-height: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 0;
+  line-height: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 244, 255, 0.98)) !important;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.12);
+}
+
+.workspace-shell.tree-shell .tree-panel-visibility-button::before,
+.workspace-shell.tree-shell .tree-side-panel .detail-close-button::before {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  color: #4f46e5;
+}
+
+.workspace-shell.tree-shell .tree-panel-visibility-button::before {
+  content: '\2039';
+}
+
+.workspace-shell.tree-shell .tree-side-panel .detail-close-button::before {
+  content: '\203A';
+}
+
+.workspace-shell.tree-shell .tree-side-panel .detail-panel-utility {
+  padding: 10px 10px 0;
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle {
+  top: 16px;
+  left: 0;
+  width: 18px;
+  min-width: 18px;
+  min-height: 72px;
+  height: 72px;
+  padding: 0;
+  gap: 0;
+  border-radius: 0 12px 12px 0;
+  border-left: none;
+  font-size: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(238, 244, 255, 0.96)) !important;
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.14);
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle::before {
+  content: '\203A';
+  font-size: 14px;
+  color: #4f46e5;
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle::after {
+  content: '';
+  display: none;
+}
+
+@media (max-width: 1080px) {
+  .workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface-toolbar {
+    padding: 10px 12px 8px !important;
+  }
+
+  .workspace-shell.tree-shell .tree-sidebar-floating-toggle {
+    left: 12px;
+    width: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border-left: 1px solid rgba(99, 102, 241, 0.2);
+  }
+}
+
+/* Final tree canvas cleanup */
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface-toolbar {
+  display: none !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas,
+.workspace-shell.tree-shell .tree-stage-canvas > .mindmap-surface,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-surface,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-viewport {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas > .mindmap-surface {
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-stack,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-pan-layer,
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-scale-layer {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.workspace-shell.tree-shell .tree-stage-canvas .mindmap-stack {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Tree sidebar toggle alignment */
+.workspace-shell.tree-shell .tree-list-panel-actions {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+  padding: 0;
+}
+
+.workspace-shell.tree-shell .tree-list-panel .search-field {
+  padding: 18px 18px 0;
+}
+
+.workspace-shell.tree-shell .tree-list-panel .search-field span {
+  margin: 0 44px 10px 0;
+  line-height: 32px;
+}
+
+.workspace-shell.tree-shell .tree-panel-visibility-button {
+  min-width: 32px;
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 244, 255, 0.98)) !important;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.12);
+}
+
+.workspace-shell.tree-shell .tree-panel-visibility-button::before {
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  color: #4f46e5;
+}
+
+.workspace-shell.tree-shell .tree-stage.sidebar-closed .tree-sidebar-floating-toggle,
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle {
+  top: 18px;
+  left: 12px;
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(238, 244, 255, 0.96)) !important;
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.14);
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  background:
+    center / contain no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M3.75 6.75h5.1l1.55 1.95H20.25a1.5 1.5 0 0 1 1.5 1.5v7.05a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V8.25a1.5 1.5 0 0 1 1.5-1.5Z' fill='%23dbeafe' stroke='%234f46e5' stroke-width='1.4'/%3E%3Cpath d='M3.75 10.2h18' stroke='%234f46e5' stroke-linecap='round' stroke-width='1.4'/%3E%3C/svg%3E");
+}
+
+.workspace-shell.tree-shell .tree-sidebar-floating-toggle::after {
+  content: none !important;
+  display: none !important;
+}
+
+@media (max-width: 1080px) {
+  .workspace-shell.tree-shell .tree-list-panel-actions {
+    top: 16px;
+    right: 16px;
+  }
+
+  .workspace-shell.tree-shell .tree-list-panel .search-field {
+    padding: 16px 16px 0;
+  }
+
+  .workspace-shell.tree-shell .tree-sidebar-floating-toggle {
+    top: 16px;
+    left: 10px;
+    width: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+}
+
+/* Tree mode: fixed canvas + flat sidebar list */
+.workspace-shell.tree-shell .tree-stage {
+  --tree-detail-width: min(60vw, calc(100vw - 48px));
+  --tree-stage-height: calc(100vh - 172px);
+  height: var(--tree-stage-height);
+  min-height: var(--tree-stage-height);
+  max-height: var(--tree-stage-height);
+}
+
+.workspace-shell.tree-shell .tree-list-panel,
+.workspace-shell.tree-shell .tree-detail-side,
+.workspace-shell.tree-shell .tree-stage-canvas {
+  height: 100%;
+  min-height: 0;
+}
+
+.workspace-shell.tree-shell .tree-list-panel,
+.workspace-shell.tree-shell .tree-detail-side {
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+}
+
+.workspace-shell.tree-shell .tree-list-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-shell.tree-shell .tree-list-panel .search-field,
+.workspace-shell.tree-shell .tree-list-panel .tree-view,
+.workspace-shell.tree-shell .tree-detail-side .tree-side-panel {
+  flex: none;
+}
+
+.workspace-shell.tree-shell .tree-list-panel .tree-view,
+.workspace-shell.tree-shell .tree-detail-side .tree-side-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.workspace-shell.tree-shell .tree-list-panel .task-node-meta {
+  padding-left: 22px;
+}
+
+@media (max-width: 1280px) {
+  .workspace-shell.tree-shell .tree-stage {
+    --tree-detail-width: min(58vw, calc(100vw - 48px));
+  }
+}
+
+@media (max-width: 1080px) {
+  .workspace-shell.tree-shell .tree-stage {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
+/* Final visual tuning: flat KPI cards + darker purple theme */
+.kpi-strip {
+  background: var(--bg-muted) !important;
+}
+
+.kpi-card,
+.kpi-card:nth-child(1),
+.kpi-card:nth-child(2),
+.kpi-card:nth-child(3),
+.kpi-card:nth-child(4),
+.kpi-card:nth-child(5),
+.kpi-card:nth-child(6) {
+  background: var(--bg-panel) !important;
+  border-color: var(--border-soft) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.kpi-card:hover {
+  box-shadow: var(--shadow-md) !important;
+}
+
+.kpi-glow {
+  display: none !important;
+}
+
+.kpi-icon.blue,
+.kpi-icon.cyan,
+.kpi-icon.green,
+.kpi-icon.red {
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] {
+  --bg-app: #090909;
+  --bg-panel: #121212;
+  --bg-subtle: #171717;
+  --bg-muted: #0f0f10;
+  --bg-glass: rgba(16, 16, 17, 0.88);
+  --text-primary: #f3f4f6;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-faint: #6b7280;
+  --border-soft: rgba(148, 163, 184, 0.14);
+  --border-medium: rgba(148, 163, 184, 0.28);
+  --border-glow: rgba(229, 231, 235, 0.18);
+  --accent: #d1d5db;
+  --accent-hover: #f3f4f6;
+  --accent-soft: rgba(229, 231, 235, 0.1);
+  --accent-glow: rgba(229, 231, 235, 0.16);
+  --tone-indigo: rgba(148, 163, 184, 0.12);
+  --tone-cyan: rgba(148, 163, 184, 0.1);
+  --tone-emerald: rgba(148, 163, 184, 0.1);
+  --tone-amber: rgba(148, 163, 184, 0.1);
+  --tone-rose: rgba(148, 163, 184, 0.1);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 16px 34px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 22px 48px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 28px 62px rgba(0, 0, 0, 0.46);
+  --shadow-2xl: 0 36px 90px rgba(0, 0, 0, 0.54);
+  --shadow-blue: 0 12px 28px rgba(229, 231, 235, 0.12);
+  --shadow-accent: 0 0 24px rgba(229, 231, 235, 0.1);
+  --finly-shell-bg: #090909;
+  --finly-topbar-bg: #0f0f10;
+  --finly-panel-bg: #121212;
+  --finly-panel-alt-bg: #171717;
+  --finly-soft-bg: #1c1c1d;
+  --finly-stroke: rgba(148, 163, 184, 0.14);
+  --finly-stroke-strong: rgba(148, 163, 184, 0.28);
+  --finly-text: #f3f4f6;
+  --finly-subtext: #9ca3af;
+  --finly-accent: #9ca3af;
+  --finly-accent-strong: #d1d5db;
+  --finly-accent-soft: rgba(229, 231, 235, 0.1);
+  --finly-shadow: 0 20px 46px rgba(0, 0, 0, 0.42);
+  --finly-shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.28);
+  --finly-input-bg: #101010;
+  --finly-ghost-bg: #171718;
+  --finly-ghost-hover: #1e1f21;
+}
+
+html[data-theme='dark'] body {
+  background:
+    radial-gradient(circle at 78% 10%, rgba(255, 255, 255, 0.06), transparent 16%),
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.03), transparent 18%),
+    linear-gradient(180deg, #090909 0%, #0f0f10 100%) !important;
+}
+
+html[data-theme='dark'] .workspace-topbar,
+html[data-theme='dark'] .sync-banner,
+html[data-theme='dark'] .kpi-strip,
+html[data-theme='dark'] .tree-workspace-header,
+html[data-theme='dark'] .detail-header,
+html[data-theme='dark'] .detail-tab-row,
+html[data-theme='dark'] .mindmap-surface-toolbar {
+  background: #0f0f10 !important;
+  border-color: var(--finly-stroke) !important;
+  backdrop-filter: blur(18px);
+}
+
+html[data-theme='dark'] .sidebar-panel,
+html[data-theme='dark'] .detail-panel,
+html[data-theme='dark'] .tree-workspace,
+html[data-theme='dark'] .tree-toolbar-card,
+html[data-theme='dark'] .content-card,
+html[data-theme='dark'] .timeline-card,
+html[data-theme='dark'] .edit-history-card,
+html[data-theme='dark'] .subtask-card,
+html[data-theme='dark'] .discussion-summary-card,
+html[data-theme='dark'] .empty-card,
+html[data-theme='dark'] .modal-shell,
+html[data-theme='dark'] .login-hero,
+html[data-theme='dark'] .login-stat-card,
+html[data-theme='dark'] .recent-login-card,
+html[data-theme='dark'] .login-sidecard,
+html[data-theme='dark'] .role-column,
+html[data-theme='dark'] .mindmap-surface,
+html[data-theme='dark'] .tree-overlay-panel,
+html[data-theme='dark'] .kpi-card,
+html[data-theme='dark'] .kpi-card:nth-child(1),
+html[data-theme='dark'] .kpi-card:nth-child(2),
+html[data-theme='dark'] .kpi-card:nth-child(3),
+html[data-theme='dark'] .kpi-card:nth-child(4),
+html[data-theme='dark'] .kpi-card:nth-child(5),
+html[data-theme='dark'] .kpi-card:nth-child(6) {
+  background: #121212 !important;
+  border-color: var(--finly-stroke) !important;
+  box-shadow: var(--finly-shadow) !important;
+}
+
+html[data-theme='dark'] .kpi-card:hover {
+  background: #1a1a1b !important;
+  border-color: var(--finly-stroke-strong) !important;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.38) !important;
+}
+
+html[data-theme='dark'] .kpi-icon.blue {
+  background: rgba(148, 163, 184, 0.14) !important;
+  color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .kpi-icon.cyan {
+  background: rgba(107, 114, 128, 0.18) !important;
+  color: #d1d5db !important;
+}
+
+html[data-theme='dark'] .kpi-icon.green {
+  background: rgba(82, 82, 91, 0.22) !important;
+  color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .kpi-icon.red {
+  background: rgba(63, 63, 70, 0.24) !important;
+  color: #f3f4f6 !important;
 }
