@@ -13,9 +13,18 @@ const FOCUS_MIN_ZOOM = 0.92
 const FOCUS_NODE_WIDTH_RATIO = 0.52
 const FOCUS_VIEW_Y_RATIO = 0.34
 const FIT_ZOOM_FLOOR_RATIO = 0.92
+const PAN_START_THRESHOLD = 6
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
+}
+
+function clearTextSelection() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.getSelection?.()?.removeAllRanges()
 }
 
 function getFitView(viewportElement, stackElement) {
@@ -419,6 +428,8 @@ function TaskHierarchyMap({
   })
   const viewportRef = useRef(null)
   const dragRef = useRef(null)
+  const suppressNodeClickRef = useRef(false)
+  const suppressNodeClickTimerRef = useRef(0)
   const stackRef = useRef(null)
   const zoomRef = useRef(zoom)
   const panRef = useRef(pan)
@@ -438,6 +449,27 @@ function TaskHierarchyMap({
   useEffect(() => {
     panRef.current = pan
   }, [pan])
+
+  useEffect(() => {
+    return () => {
+      if (suppressNodeClickTimerRef.current) {
+        window.clearTimeout(suppressNodeClickTimerRef.current)
+      }
+    }
+  }, [])
+
+  const suppressNextNodeClick = () => {
+    suppressNodeClickRef.current = true
+
+    if (suppressNodeClickTimerRef.current) {
+      window.clearTimeout(suppressNodeClickTimerRef.current)
+    }
+
+    suppressNodeClickTimerRef.current = window.setTimeout(() => {
+      suppressNodeClickRef.current = false
+      suppressNodeClickTimerRef.current = 0
+    }, 0)
+  }
 
   const commitView = (nextView) => {
     if (!nextView?.pan) {
@@ -678,24 +710,39 @@ function TaskHierarchyMap({
     fitTreeToViewport()
   }
 
+  const handleNodeClick = (nodeId) => {
+    if (suppressNodeClickRef.current) {
+      suppressNodeClickRef.current = false
+
+      if (suppressNodeClickTimerRef.current) {
+        window.clearTimeout(suppressNodeClickTimerRef.current)
+        suppressNodeClickTimerRef.current = 0
+      }
+
+      return
+    }
+
+    onSelect(nodeId)
+  }
+
   const handlePointerDown = (event) => {
     if (event.button !== 0) {
       return
     }
 
-    if (event.target.closest('button, input, textarea, select, a')) {
+    if (event.target.closest('input, textarea, select, a, .mindmap-collapse-button')) {
       return
     }
 
+    clearTextSelection()
     dragRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       originX: panRef.current.x,
       originY: panRef.current.y,
+      didPan: false,
     }
-    setIsPanning(true)
-    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const handlePointerMove = (event) => {
@@ -705,6 +752,26 @@ function TaskHierarchyMap({
 
     const deltaX = event.clientX - dragRef.current.startX
     const deltaY = event.clientY - dragRef.current.startY
+
+    if (
+      !dragRef.current.didPan &&
+      Math.abs(deltaX) < PAN_START_THRESHOLD &&
+      Math.abs(deltaY) < PAN_START_THRESHOLD
+    ) {
+      return
+    }
+
+    if (!dragRef.current.didPan) {
+      dragRef.current.didPan = true
+      setIsPanning(true)
+      clearTextSelection()
+
+      if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }
+
+      event.preventDefault()
+    }
 
     applyView({
       zoom: zoomRef.current,
@@ -720,12 +787,18 @@ function TaskHierarchyMap({
       return
     }
 
+    const didPan = dragRef.current.didPan
+
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
 
     dragRef.current = null
     setIsPanning(false)
+
+    if (didPan) {
+      suppressNextNodeClick()
+    }
   }
 
   const handleToggleCollapse = (node, isCollapsed) => {
@@ -824,7 +897,7 @@ function TaskHierarchyMap({
                   node={node}
                   usersById={usersById}
                   selectedTaskId={selectedTaskId}
-                  onSelect={onSelect}
+                  onSelect={handleNodeClick}
                   collapsedMap={collapsedMap}
                   onToggleCollapse={handleToggleCollapse}
                   branchHue={ROOT_BRANCH_HUE}

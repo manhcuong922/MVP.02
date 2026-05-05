@@ -5,7 +5,6 @@ import {
   formatPercent,
   getPriorityLabel,
   getStatusLabel,
-  truncateText,
 } from '../utils/formatters'
 import {
   canCreateChildTask,
@@ -23,9 +22,7 @@ import TaskHistoryPanel from './TaskHistoryPanel'
 
 const tabs = [
   { id: 'overview', label: 'Thông tin chung' },
-  { id: 'subtasks', label: 'Subtask' },
-  { id: 'history', label: 'Lịch sử' },
-  { id: 'edits', label: 'Chỉnh sửa' },
+  { id: 'activity', label: 'Lịch sử & chỉnh sửa' },
 ]
 
 function InfoTile({ label, value, accent }) {
@@ -45,7 +42,6 @@ function TaskDetailPanel({
   historyById,
   commentsById,
   visibleIdSet,
-  onSelectTask,
   onOpenCreateRoot = null,
   onOpenCreateSubtask,
   onOpenSplit,
@@ -90,6 +86,12 @@ function TaskDetailPanel({
     setDraftNote('')
   }, [task?.id, task?.progress, task?.status, task?.updatedAt])
 
+  useEffect(() => {
+    if (!['overview', 'discussion', 'activity'].includes(activeTab)) {
+      setActiveTab('overview')
+    }
+  }, [activeTab])
+
   if (!task) {
     return (
       <section className={`detail-panel empty ${className}`.trim()}>
@@ -112,6 +114,7 @@ function TaskDetailPanel({
   const editEntries = historyEntries.filter(
     (entry) => entry.actionType === 'edit' && entry.fieldName !== 'note',
   )
+  const combinedActivityCount = activityEntries.length + editEntries.length
   const late = isTaskLate(task)
   const hasChildren = childTasks.length > 0
   const allowCreateChild = canCreateChildTask(currentUser, task, usersById)
@@ -282,7 +285,13 @@ function TaskDetailPanel({
                 ? `Trao doi (${commentEntries.length})`
                 : 'Trao doi',
           },
-          ...tabs.slice(1),
+          {
+            id: 'activity',
+            label:
+              combinedActivityCount > 0
+                ? `Lịch sử & chỉnh sửa (${combinedActivityCount})`
+                : 'Lịch sử & chỉnh sửa',
+          },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -461,48 +470,25 @@ function TaskDetailPanel({
           />
         ) : null}
 
-        {activeTab === 'subtasks' ? (
-          <div className="subtask-grid">
-            {childTasks.length === 0 ? (
-              <div className="empty-card compact">
-                <strong>Chưa có node con.</strong>
+        {activeTab === 'activity' ? (
+          <div className="activity-log-grid">
+            <article className="content-card">
+              <div className="content-card-header">
+                <h3>Lịch sử hoạt động</h3>
+                <span className="subtle-label">{activityEntries.length} mục</span>
               </div>
-            ) : null}
+              <TaskHistoryPanel entries={activityEntries} />
+            </article>
 
-            {childTasks.map((childTask) => {
-              const childAssignee = usersById[childTask.assignedTo]
-
-              return (
-                <button
-                  key={childTask.id}
-                  type="button"
-                  className="subtask-card"
-                  data-status={childTask.status}
-                  onClick={() => onSelectTask(childTask.id)}
-                >
-                  <div className="subtask-card-topline">
-                    <strong>{childTask.title}</strong>
-                    <span className={`badge status-${childTask.status}`}>
-                      {getStatusLabel(childTask.status)}
-                    </span>
-                  </div>
-                  <p>{truncateText(childTask.description, 120)}</p>
-                  <div className="subtask-card-meta">
-                    <span>{childAssignee?.name ?? 'Chưa giao'}</span>
-                    <span>{getPriorityLabel(childTask.priority)}</span>
-                    <span>{formatDate(childTask.deadline)}</span>
-                    {childTask.childTaskCount > 0 ? (
-                      <span>{formatPercent(childTask.progress)}</span>
-                    ) : null}
-                  </div>
-                </button>
-              )
-            })}
+            <article className="content-card">
+              <div className="content-card-header">
+                <h3>Nhật ký chỉnh sửa</h3>
+                <span className="subtle-label">{editEntries.length} thay đổi</span>
+              </div>
+              <EditHistoryList entries={editEntries} />
+            </article>
           </div>
         ) : null}
-
-        {activeTab === 'history' ? <TaskHistoryPanel entries={activityEntries} /> : null}
-        {activeTab === 'edits' ? <EditHistoryList entries={editEntries} /> : null}
       </div>
     </section>
   )

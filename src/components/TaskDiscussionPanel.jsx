@@ -52,26 +52,7 @@ function TaskDiscussionPanel({
 
   return (
     <div className="discussion-layout">
-      <article className="content-card discussion-summary-card">
-        <div className="discussion-summary-topline">
-          <div>
-            <p className="eyebrow">Trao Doi</p>
-            <h3>Chat va binh luan trong task</h3>
-          </div>
-          <span className="discussion-count">{entries.length} tin nhan</span>
-        </div>
-        <p>
-          Moi trao doi se duoc gom ngay trong task de nguoi giao viec va nguoi phu
-          trach theo doi cung mot cho.
-        </p>
-      </article>
-
       <div className="content-card discussion-thread-shell">
-        <div className="content-card-header">
-          <h3>Hoi thoai noi bo</h3>
-          <span className="subtle-label">Cap nhat realtime trong task hien tai</span>
-        </div>
-
         <div className="discussion-thread" ref={threadRef}>
           {entries.length === 0 ? (
             <div className="empty-card compact discussion-empty">
@@ -127,15 +108,9 @@ function TaskDiscussionPanel({
       </div>
 
       <form className="content-card discussion-composer" onSubmit={handleSubmit}>
-        <div className="content-card-header">
-          <h3>Gui binh luan</h3>
-          <span className="subtle-label">Nhan Ctrl + Enter de gui nhanh</span>
-        </div>
-
-        <label className="field field-full">
-          <span>Noi dung trao doi</span>
+        <div className="discussion-input-row">
           <textarea
-            rows="4"
+            rows="2"
             value={draftMessage}
             onChange={(event) => setDraftMessage(event.target.value)}
             onKeyDown={(event) => {
@@ -146,15 +121,13 @@ function TaskDiscussionPanel({
             }}
             placeholder="Nhap binh luan, canh bao, hoac thong tin can phoi hop trong task."
           />
-        </label>
-
-        <div className="discussion-composer-actions">
-          <p>
-            Trao doi trong day khong thay cho log thay doi, ma dung de team thao luan
-            va chot thong tin ngay tren task.
-          </p>
-          <button type="submit" className="primary-button" disabled={!canSubmit}>
-            {isSaving ? 'Dang gui...' : 'Gui binh luan'}
+          <button
+            type="submit"
+            className="discussion-send-button"
+            disabled={!canSubmit}
+            aria-label="Gui binh luan"
+          >
+            {isSaving ? '...' : 'Gui'}
           </button>
         </div>
       </form>
