@@ -7,21 +7,22 @@ import {
 function HistoryIcon({ actionType }) {
   const iconMap = {
     create: '+',
-    assign: '↗',
-    status_change: '•',
-    split: '⇢',
-    edit: '✎',
+    assign: '>',
+    status_change: '*',
+    split: '=>',
+    edit: 'E',
+    upload: '^',
   }
 
-  return <span className={`timeline-icon ${actionType}`}>{iconMap[actionType] ?? '•'}</span>
+  return <span className={`timeline-icon ${actionType}`}>{iconMap[actionType] ?? '*'}</span>
 }
 
 function TaskHistoryPanel({ entries }) {
   if (entries.length === 0) {
     return (
       <div className="empty-card compact">
-        <strong>Chưa có activity log.</strong>
-        <p>Khi giao việc, đổi trạng thái hoặc chia task, timeline sẽ hiển thị tại đây.</p>
+        <strong>Chua co activity log.</strong>
+        <p>Khi giao viec, doi trang thai, chia task hoac tai tai lieu, timeline se hien thi tai day.</p>
       </div>
     )
   }
@@ -40,8 +41,8 @@ function TaskHistoryPanel({ entries }) {
             {entry.fieldName && entry.fieldName !== 'note' ? (
               <p className="timeline-diff">
                 <span>{getFieldLabel(entry.fieldName)}</span>
-                <span>{entry.oldValue || 'Trống'}</span>
-                <span>{entry.newValue || 'Trống'}</span>
+                <span>{entry.oldValue || 'Trong'}</span>
+                <span>{entry.newValue || 'Trong'}</span>
               </p>
             ) : null}
             <p>{entry.note}</p>
@@ -53,4 +54,3 @@ function TaskHistoryPanel({ entries }) {
 }
 
 export default TaskHistoryPanel
-

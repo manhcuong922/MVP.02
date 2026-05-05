@@ -95,6 +95,32 @@ function createCommentEntry({ taskId, actor, message, createdAt }) {
   }
 }
 
+function createDocumentEntry({
+  taskId,
+  actor,
+  name,
+  mimeType,
+  size,
+  kind,
+  downloadUrl,
+  storagePath,
+  createdAt,
+}) {
+  return {
+    id: createId('document'),
+    taskId,
+    uploadedBy: actor.id,
+    uploaderName: actor.name,
+    name,
+    mimeType,
+    size,
+    kind,
+    downloadUrl,
+    storagePath,
+    createdAt,
+  }
+}
+
 export function buildCreateTaskMutation({
   currentUser,
   parentTask,
@@ -465,5 +491,45 @@ export function buildTaskCommentMutation({ currentUser, task, message }) {
     updates: {
       [`/taskComments/${entry.id}`]: entry,
     },
+  }
+}
+
+export function buildTaskDocumentMutation({ currentUser, task, uploads }) {
+  if (!Array.isArray(uploads) || uploads.length === 0) {
+    return null
+  }
+
+  const updates = {}
+  const documentIds = []
+
+  uploads.forEach((upload) => {
+    const entry = createDocumentEntry({
+      taskId: task.id,
+      actor: currentUser,
+      name: upload.name,
+      mimeType: upload.mimeType,
+      size: upload.size,
+      kind: upload.kind,
+      downloadUrl: upload.downloadUrl,
+      storagePath: upload.storagePath,
+      createdAt: upload.createdAt ?? nowIso(),
+    })
+
+    const log = createHistoryEntry({
+      taskId: task.id,
+      actionType: 'upload',
+      actor: currentUser,
+      note: `${currentUser.name} tai len tai lieu "${entry.name}".`,
+      createdAt: entry.createdAt,
+    })
+
+    documentIds.push(entry.id)
+    updates[`/taskDocuments/${entry.id}`] = entry
+    updates[`/taskHistory/${log.id}`] = log
+  })
+
+  return {
+    documentIds,
+    updates,
   }
 }

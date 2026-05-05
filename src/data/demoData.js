@@ -49,6 +49,7 @@ export const ACTION_LABELS = {
   status_change: 'Đổi trạng thái',
   edit: 'Chỉnh sửa',
   split: 'Chia task',
+  upload: 'Tai lieu',
 }
 
 export const seedUsers = {
@@ -782,9 +783,80 @@ export const seedTaskComments = rawTaskComments.reduce((collection, entry, index
   return collection
 }, {})
 
+const rawTaskDocuments = [
+  {
+    taskId: 'task_root_growth',
+    uploadedBy: 'ceo_1',
+    name: 'tong-quan-do-an-q2.svg',
+    mimeType: 'image/svg+xml',
+    size: 184320,
+    kind: 'image',
+    downloadUrl: '/project-docs/tong-quan-do-an-q2.svg',
+    storagePath: 'seed/project-docs/tong-quan-do-an-q2.svg',
+    createdAt: at(1.5),
+  },
+  {
+    taskId: 'task_root_growth',
+    uploadedBy: 'deputy_1',
+    name: 'mockup-dashboard-tang-truong.svg',
+    mimeType: 'image/svg+xml',
+    size: 216480,
+    kind: 'image',
+    downloadUrl: '/project-docs/mockup-dashboard-tang-truong.svg',
+    storagePath: 'seed/project-docs/mockup-dashboard-tang-truong.svg',
+    createdAt: at(7.2),
+  },
+  {
+    taskId: 'task_root_growth',
+    uploadedBy: 'manager_1',
+    name: 'ke-hoach-trien-khai-q2.txt',
+    mimeType: 'text/plain',
+    size: 24576,
+    kind: 'document',
+    downloadUrl: '/project-docs/ke-hoach-trien-khai-q2.txt',
+    storagePath: 'seed/project-docs/ke-hoach-trien-khai-q2.txt',
+    createdAt: at(7.4),
+  },
+  {
+    taskId: 'task_root_growth',
+    uploadedBy: 'manager_3',
+    name: 'bang-kpi-theo-doi.csv',
+    mimeType: 'text/csv',
+    size: 18432,
+    kind: 'document',
+    downloadUrl: '/project-docs/bang-kpi-theo-doi.csv',
+    storagePath: 'seed/project-docs/bang-kpi-theo-doi.csv',
+    createdAt: at(19.8),
+  },
+  {
+    taskId: 'task_root_ops',
+    uploadedBy: 'deputy_2',
+    name: 'so-do-van-hanh-sla.svg',
+    mimeType: 'image/svg+xml',
+    size: 162240,
+    kind: 'image',
+    downloadUrl: '/project-docs/so-do-van-hanh-sla.svg',
+    storagePath: 'seed/project-docs/so-do-van-hanh-sla.svg',
+    createdAt: at(20.4),
+  },
+]
+
+export const seedTaskDocuments = rawTaskDocuments.reduce((collection, entry, index) => {
+  const id = `document_${String(index + 1).padStart(3, '0')}`
+
+  collection[id] = {
+    id,
+    ...entry,
+    uploaderName: seedUsers[entry.uploadedBy]?.name ?? 'Nguoi dung he thong',
+  }
+
+  return collection
+}, {})
+
 export const seedData = {
   users: seedUsers,
   tasks: seedTasks,
   taskHistory: seedTaskHistory,
   taskComments: seedTaskComments,
+  taskDocuments: seedTaskDocuments,
 }

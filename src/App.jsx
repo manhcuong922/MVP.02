@@ -5,7 +5,12 @@ import {
   useEffectEvent,
   useState,
 } from 'react'
-import { onValue, ref, update } from 'firebase/database'
+import { onValue, ref as dbRef, update } from 'firebase/database'
+import {
+  getDownloadURL,
+  ref as storageRef,
+  uploadBytes,
+} from 'firebase/storage'
 import CreateTaskModal from './components/CreateTaskModal'
 import EditTaskModal from './components/EditTaskModal'
 import LoginScreen from './components/LoginScreen'
@@ -13,8 +18,14 @@ import SplitTaskModal from './components/SplitTaskModal'
 import TaskDetailPanel from './components/TaskDetailPanel'
 import TaskHierarchyMap from './components/TaskHierarchyMap'
 import TreeView from './components/TreeView'
-import { seedTaskComments, seedTaskHistory, seedTasks, seedUsers } from './data/demoData'
-import { database } from './firebase/config'
+import {
+  seedTaskComments,
+  seedTaskDocuments,
+  seedTaskHistory,
+  seedTasks,
+  seedUsers,
+} from './data/demoData'
+import { database, storage } from './firebase/config'
 import { ensureDemoSeed } from './firebase/seed'
 import { getRoleLabel } from './utils/formatters'
 import {
@@ -23,6 +34,7 @@ import {
   buildExecutionUpdateMutation,
   buildSplitTaskMutation,
   buildTaskCommentMutation,
+  buildTaskDocumentMutation,
 } from './utils/mutationBuilders'
 import {
   buildTaskTree,
@@ -46,6 +58,7 @@ function App() {
   const [tasksById, setTasksById] = useState(seedTasks)
   const [historyById, setHistoryById] = useState(seedTaskHistory)
   const [commentsById, setCommentsById] = useState(seedTaskComments)
+  const [documentsById, setDocumentsById] = useState(seedTaskDocuments)
   const [recentUserId, setRecentUserId] = useState(
     () => window.localStorage.getItem(STORAGE_KEY) ?? '',
   )
@@ -76,6 +89,7 @@ function App() {
       'Ứng dụng sẽ kiểm tra Firebase Realtime Database và tự seed dữ liệu demo nếu database đang trống.',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
   const [isCreateRootOpen, setCreateRootOpen] = useState(false)
   const [isCreateSubtaskOpen, setCreateSubtaskOpen] = useState(false)
   const [isSplitOpen, setSplitOpen] = useState(false)
@@ -170,10 +184,16 @@ function App() {
 
     const subscribeCollection = (path, applyData, fallbackValue, label) => {
       const unsubscribe = onValue(
-        ref(database, path),
+        dbRef(database, path),
         (snapshot) => {
           const nextValue = snapshot.val()
-          applyData(nextValue || fallbackValue)
+          const shouldUseFallback =
+            !nextValue ||
+            (path === 'taskDocuments' &&
+              typeof nextValue === 'object' &&
+              Object.keys(nextValue).length === 0)
+
+          applyData(shouldUseFallback ? fallbackValue : nextValue)
         },
         (error) => {
           updateSyncMessage(
@@ -217,6 +237,12 @@ function App() {
         'Lịch sử task',
       )
       subscribeCollection('taskComments', setCommentsById, seedTaskComments, 'Task comments')
+      subscribeCollection(
+        'taskDocuments',
+        setDocumentsById,
+        seedTaskDocuments,
+        'Task documents',
+      )
     }
 
     bootstrapRealtime()
@@ -317,7 +343,7 @@ function App() {
     setIsSaving(true)
 
     try {
-      await update(ref(database), updates)
+      await update(dbRef(database), updates)
       setSyncState({
         tone: 'live',
         message: successMessage,
@@ -333,6 +359,23 @@ function App() {
       setIsSaving(false)
     }
   }
+
+  const buildDocumentStoragePath = (task, file, actorId) => {
+    const timestamp = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')
+    const uniqueSuffix = crypto.randomUUID().replaceAll('-', '').slice(0, 10)
+    const safeName = String(file.name ?? 'tep')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9._-]/g, '')
+
+    return `task-documents/${task.rootTaskId ?? task.id}/${task.id}/${actorId}-${timestamp}-${uniqueSuffix}-${safeName || 'tep'}`.replaceAll(
+      '--',
+      '-',
+    )
+  }
+
+  const resolveDocumentKind = (file) =>
+    String(file.type ?? '').startsWith('image/') ? 'image' : 'document'
 
   const revealTask = (taskId) => {
     if (!taskId) {
@@ -646,6 +689,65 @@ function App() {
     )
   }
 
+  const handleUploadDocuments = async (files) => {
+    if (!currentUser || !selectedRawTask || !Array.isArray(files) || files.length === 0) {
+      return false
+    }
+
+    setIsUploadingDocuments(true)
+    setSyncState({
+      tone: 'neutral',
+      message: `Dang tai len ${files.length} tep cho task "${selectedTask.title}"...`,
+    })
+
+    try {
+      const uploads = await Promise.all(
+        files.map(async (file) => {
+          const createdAt = new Date().toISOString()
+          const storagePath = buildDocumentStoragePath(selectedRawTask, file, currentUser.id)
+          const fileRef = storageRef(storage, storagePath)
+
+          await uploadBytes(fileRef, file)
+
+          const downloadUrl = await getDownloadURL(fileRef)
+
+          return {
+            name: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            size: Number(file.size ?? 0),
+            kind: resolveDocumentKind(file),
+            downloadUrl,
+            storagePath,
+            createdAt,
+          }
+        }),
+      )
+
+      const mutation = buildTaskDocumentMutation({
+        currentUser,
+        task: selectedRawTask,
+        uploads,
+      })
+
+      if (!mutation) {
+        return false
+      }
+
+      return applyUpdates(
+        mutation.updates,
+        `Da tai len ${uploads.length} tai lieu cho task "${selectedTask.title}".`,
+      )
+    } catch (error) {
+      setSyncState({
+        tone: 'warning',
+        message: `Khong the tai tep len Firebase Storage. ${error.message}`,
+      })
+      return false
+    } finally {
+      setIsUploadingDocuments(false)
+    }
+  }
+
   const renderFolderWorkspace = () => (
     <>
       <aside className="sidebar-panel">
@@ -679,6 +781,7 @@ function App() {
         usersById={usersById}
         historyById={historyById}
         commentsById={commentsById}
+        documentsById={documentsById}
         visibleIdSet={visibleIdSet}
         onSelectTask={handleSelectTask}
         onOpenCreateRoot={canCreateRootTask(currentUser) ? () => setCreateRootOpen(true) : null}
@@ -687,7 +790,9 @@ function App() {
         onOpenEdit={() => setEditOpen(true)}
         onUpdateExecution={handleExecutionUpdate}
         onAddComment={handleAddComment}
+        onUploadDocuments={handleUploadDocuments}
         isSaving={isSaving}
+        isUploadingDocuments={isUploadingDocuments}
         canOpenTreeView={false}
         onOpenTaskTree={() => selectedTask && handleOpenTreeFromTask(selectedTask.id)}
         treeActionLabel="Mở nhánh dạng tree"
@@ -752,6 +857,7 @@ function App() {
                 usersById={usersById}
                 historyById={historyById}
                 commentsById={commentsById}
+                documentsById={documentsById}
                 visibleIdSet={visibleIdSet}
                 onSelectTask={handleSelectTask}
                 onOpenCreateRoot={canCreateRootTask(currentUser) ? () => setCreateRootOpen(true) : null}
@@ -760,7 +866,9 @@ function App() {
                 onOpenEdit={() => setEditOpen(true)}
                 onUpdateExecution={handleExecutionUpdate}
                 onAddComment={handleAddComment}
+                onUploadDocuments={handleUploadDocuments}
                 isSaving={isSaving}
+                isUploadingDocuments={isUploadingDocuments}
                 className="tree-side-panel"
                 onClose={() => setTreeDetailOpen(false)}
               />
@@ -878,6 +986,7 @@ function App() {
                 usersById={usersById}
                 historyById={historyById}
                 commentsById={commentsById}
+                documentsById={documentsById}
                 visibleIdSet={visibleIdSet}
                 onSelectTask={handleSelectTask}
                 onOpenCreateRoot={canCreateRootTask(currentUser) ? () => setCreateRootOpen(true) : null}
@@ -886,7 +995,9 @@ function App() {
                 onOpenEdit={() => setEditOpen(true)}
                 onUpdateExecution={handleExecutionUpdate}
                 onAddComment={handleAddComment}
+                onUploadDocuments={handleUploadDocuments}
                 isSaving={isSaving}
+                isUploadingDocuments={isUploadingDocuments}
                 className="tree-side-panel"
                 onClose={() => setTreeDetailOpen(false)}
               />
@@ -980,6 +1091,7 @@ function App() {
                 usersById={usersById}
                 historyById={historyById}
                 commentsById={commentsById}
+                documentsById={documentsById}
                 visibleIdSet={visibleIdSet}
                 onSelectTask={handleSelectTask}
                 onOpenCreateRoot={canCreateRootTask(currentUser) ? () => setCreateRootOpen(true) : null}
@@ -988,7 +1100,9 @@ function App() {
                 onOpenEdit={() => setEditOpen(true)}
                 onUpdateExecution={handleExecutionUpdate}
                 onAddComment={handleAddComment}
+                onUploadDocuments={handleUploadDocuments}
                 isSaving={isSaving}
+                isUploadingDocuments={isUploadingDocuments}
                 className="tree-side-panel"
                 onClose={() => setTreeDetailOpen(false)}
               />

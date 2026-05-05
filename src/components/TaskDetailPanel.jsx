@@ -13,11 +13,13 @@ import {
   canUpdateExecution,
   getTaskChildren,
   getTaskCommentEntries,
+  getTaskDocumentEntries,
   getTaskHistoryEntries,
   isTaskLate,
 } from '../utils/taskUtils'
 import EditHistoryList from './EditHistoryList'
 import TaskDiscussionPanel from './TaskDiscussionPanel'
+import TaskDocumentsPanel from './TaskDocumentsPanel'
 import TaskHistoryPanel from './TaskHistoryPanel'
 
 const tabs = [
@@ -41,6 +43,7 @@ function TaskDetailPanel({
   usersById,
   historyById,
   commentsById,
+  documentsById,
   visibleIdSet,
   onOpenCreateRoot = null,
   onOpenCreateSubtask,
@@ -48,7 +51,9 @@ function TaskDetailPanel({
   onOpenEdit,
   onUpdateExecution,
   onAddComment,
+  onUploadDocuments,
   isSaving,
+  isUploadingDocuments = false,
   className = '',
   onClose = null,
   canOpenTreeView = false,
@@ -87,7 +92,7 @@ function TaskDetailPanel({
   }, [task?.id, task?.progress, task?.status, task?.updatedAt])
 
   useEffect(() => {
-    if (!['overview', 'discussion', 'activity'].includes(activeTab)) {
+    if (!['overview', 'documents', 'discussion', 'activity'].includes(activeTab)) {
       setActiveTab('overview')
     }
   }, [activeTab])
@@ -108,6 +113,7 @@ function TaskDetailPanel({
   const childTasks = getTaskChildren(tasksById, task.id, visibleIdSet)
   const historyEntries = getTaskHistoryEntries(historyById, task.id)
   const commentEntries = getTaskCommentEntries(commentsById, task.id)
+  const documentEntries = getTaskDocumentEntries(documentsById, task.id)
   const activityEntries = historyEntries.filter(
     (entry) => entry.actionType !== 'edit' || entry.fieldName === 'note',
   )
@@ -140,6 +146,7 @@ function TaskDetailPanel({
     { label: 'Cập nhật cuối', value: formatDateTime(task.updatedAt) },
     { label: 'Log hoạt động', value: `${historyEntries.length} lượt` },
     { label: 'Trao doi', value: `${commentEntries.length} tin nhan` },
+    { label: 'Tai lieu', value: `${documentEntries.length} tep` },
   ]
 
   const normalizedCompletedAtLabel = task.completedAt
@@ -278,6 +285,13 @@ function TaskDetailPanel({
       <div className="detail-tab-row">
         {[
           tabs[0],
+          {
+            id: 'documents',
+            label:
+              documentEntries.length > 0
+                ? `Tai lieu do an (${documentEntries.length})`
+                : 'Tai lieu do an',
+          },
           {
             id: 'discussion',
             label:
@@ -467,6 +481,15 @@ function TaskDetailPanel({
             entries={commentEntries}
             onSubmitComment={onAddComment}
             isSaving={isSaving}
+          />
+        ) : null}
+
+        {activeTab === 'documents' ? (
+          <TaskDocumentsPanel
+            currentUser={currentUser}
+            entries={documentEntries}
+            onUploadDocuments={onUploadDocuments}
+            isUploading={isUploadingDocuments}
           />
         ) : null}
 

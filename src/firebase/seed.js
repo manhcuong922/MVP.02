@@ -3,11 +3,18 @@ import { seedData } from '../data/demoData'
 import { database } from './config'
 
 export async function ensureDemoSeed() {
-  const [usersSnapshot, tasksSnapshot, historySnapshot, commentsSnapshot] = await Promise.all([
+  const [
+    usersSnapshot,
+    tasksSnapshot,
+    historySnapshot,
+    commentsSnapshot,
+    documentsSnapshot,
+  ] = await Promise.all([
     get(ref(database, 'users')),
     get(ref(database, 'tasks')),
     get(ref(database, 'taskHistory')),
     get(ref(database, 'taskComments')),
+    get(ref(database, 'taskDocuments')),
   ])
 
   const updates = {}
@@ -26,6 +33,10 @@ export async function ensureDemoSeed() {
 
   if (!commentsSnapshot.exists()) {
     updates['/taskComments'] = seedData.taskComments
+  }
+
+  if (!documentsSnapshot.exists()) {
+    updates['/taskDocuments'] = seedData.taskDocuments
   }
 
   if (Object.keys(updates).length > 0) {

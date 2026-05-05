@@ -1,0 +1,10 @@
+KE HOACH TRIEN KHAI Q2
+
+1. Dong bo lai danh sach lead va quy tac cham diem.
+2. Chot dashboard KPI cho CEO va khoi van hanh.
+3. Cap nhat deck hop tac voi 3 goi uu dai mau.
+4. Dinh nghia lai canh bao SLA cho ticket qua han.
+
+Ghi chu:
+- Moi nhanh cap nhat tai lieu truoc 17:00 hang ngay.
+- Phien ban nay dung de demo giao dien tai lieu do an.

@@ -1,0 +1,33 @@
+<svg width="1400" height="900" viewBox="0 0 1400 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="900" rx="36" fill="#F8FAFC"/>
+  <rect x="56" y="56" width="1288" height="788" rx="28" fill="#FFFFFF" stroke="#D7E3FF"/>
+  <rect x="96" y="96" width="1210" height="88" rx="22" fill="#EEF4FF"/>
+  <rect x="96" y="220" width="290" height="180" rx="24" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <rect x="418" y="220" width="290" height="180" rx="24" fill="#F0FDFA" stroke="#99F6E4"/>
+  <rect x="740" y="220" width="290" height="180" rx="24" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <rect x="1062" y="220" width="244" height="180" rx="24" fill="#FFF7ED" stroke="#FED7AA"/>
+  <rect x="96" y="438" width="760" height="330" rx="24" fill="#F8FAFF" stroke="#D9E3FF"/>
+  <rect x="888" y="438" width="418" height="330" rx="24" fill="#F8FAFF" stroke="#D9E3FF"/>
+  <text x="128" y="150" fill="#0F172A" font-size="38" font-family="Arial" font-weight="700">Dashboard tang truong realtime</text>
+  <text x="128" y="274" fill="#2563EB" font-size="24" font-family="Arial" font-weight="700">Lead moi</text>
+  <text x="128" y="340" fill="#0F172A" font-size="54" font-family="Arial" font-weight="700">248</text>
+  <text x="450" y="274" fill="#0F766E" font-size="24" font-family="Arial" font-weight="700">Ti le chuyen doi</text>
+  <text x="450" y="340" fill="#0F172A" font-size="54" font-family="Arial" font-weight="700">31%</text>
+  <text x="772" y="274" fill="#7C3AED" font-size="24" font-family="Arial" font-weight="700">Doi tac active</text>
+  <text x="772" y="340" fill="#0F172A" font-size="54" font-family="Arial" font-weight="700">18</text>
+  <text x="1094" y="274" fill="#C2410C" font-size="24" font-family="Arial" font-weight="700">Qua han</text>
+  <text x="1094" y="340" fill="#0F172A" font-size="54" font-family="Arial" font-weight="700">04</text>
+  <polyline points="138,696 236,638 318,650 410,540 500,580 586,474 676,520 770,460 820,490" stroke="#2563EB" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="138" y1="736" x2="820" y2="736" stroke="#CBD5E1" stroke-width="4"/>
+  <line x1="138" y1="736" x2="138" y2="490" stroke="#CBD5E1" stroke-width="4"/>
+  <text x="126" y="478" fill="#64748B" font-size="18" font-family="Arial">Pipeline theo tuan</text>
+  <rect x="930" y="492" width="334" height="24" rx="12" fill="#E2E8F0"/>
+  <rect x="930" y="492" width="242" height="24" rx="12" fill="#22C55E"/>
+  <rect x="930" y="568" width="334" height="24" rx="12" fill="#E2E8F0"/>
+  <rect x="930" y="568" width="194" height="24" rx="12" fill="#3B82F6"/>
+  <rect x="930" y="644" width="334" height="24" rx="12" fill="#E2E8F0"/>
+  <rect x="930" y="644" width="284" height="24" rx="12" fill="#A855F7"/>
+  <text x="930" y="480" fill="#334155" font-size="18" font-family="Arial">CRM cleanup</text>
+  <text x="930" y="556" fill="#334155" font-size="18" font-family="Arial">Dashboard SLA</text>
+  <text x="930" y="632" fill="#334155" font-size="18" font-family="Arial">Deck hop tac</text>
+</svg>

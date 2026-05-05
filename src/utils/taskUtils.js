@@ -475,6 +475,12 @@ export function getTaskCommentEntries(commentsById, taskId) {
     .sort((left, right) => new Date(left.createdAt) - new Date(right.createdAt))
 }
 
+export function getTaskDocumentEntries(documentsById, taskId) {
+  return toArray(documentsById)
+    .filter((entry) => entry.taskId === taskId)
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+}
+
 export function summarizeTasks(tasks) {
   return tasks.reduce(
     (summary, task) => {

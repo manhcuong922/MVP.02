@@ -47,6 +47,29 @@ export function formatPercent(value) {
   return `${Number(value ?? 0)}%`
 }
 
+export function formatFileSize(value) {
+  const normalized = Number(value ?? 0)
+
+  if (!Number.isFinite(normalized) || normalized <= 0) {
+    return '0 B'
+  }
+
+  if (normalized < 1024) {
+    return `${normalized} B`
+  }
+
+  const units = ['KB', 'MB', 'GB']
+  let size = normalized / 1024
+  let unitIndex = 0
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024
+    unitIndex += 1
+  }
+
+  return `${size >= 10 ? Math.round(size) : size.toFixed(1)} ${units[unitIndex]}`
+}
+
 export function getRoleLabel(role) {
   return ROLE_LABELS[role] ?? role
 }
