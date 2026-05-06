@@ -1,0 +1,264 @@
+-- TaskFlow backend database schema
+-- Muc tieu:
+-- 1. Bam sat logic FE hien tai: user hierarchy, task tree, comment, document, activity log
+-- 2. Du de dung cho BE quan he (khuyen nghi PostgreSQL / MySQL)
+-- 3. Khong luu childrenIds; cay task duoc suy ra tu parent_task_id
+-- 4. overdue la trang thai suy dien tu deadline, khong can luu rieng
+
+-- =========================================================
+-- 1. PHONG BAN
+-- Danh muc phong ban don gian, khong co cay phong ban cha/con
+-- =========================================================
+
+CREATE TABLE departments (
+    id                  VARCHAR(50) PRIMARY KEY,
+    code                VARCHAR(50) NOT NULL UNIQUE,
+    name                VARCHAR(150) NOT NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================================
+-- 2. NGUOI DUNG
+-- manager_id giup BE tinh quyen xem task theo cap truc thuoc
+-- role bam sat FE: ceo, deputy, manager, staff
+-- =========================================================
+
+CREATE TABLE users (
+    id                  VARCHAR(50) PRIMARY KEY,
+    email               VARCHAR(255) NULL UNIQUE,
+    full_name           VARCHAR(150) NOT NULL,
+    password_hash       VARCHAR(255) NULL,
+    auth_provider       VARCHAR(50) NULL,
+    role                VARCHAR(30) NOT NULL,
+    manager_id          VARCHAR(50) NULL,
+    department_id       VARCHAR(50) NULL,
+    accent_color        VARCHAR(20) NULL,
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_users_role
+        CHECK (role IN ('ceo', 'deputy', 'manager', 'staff')),
+    CONSTRAINT fk_users_manager
+        FOREIGN KEY (manager_id)
+        REFERENCES users (id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    CONSTRAINT fk_users_department
+        FOREIGN KEY (department_id)
+        REFERENCES departments (id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+);
+
+-- =========================================================
+-- 3. TASKS
+-- parent_task_id: node cha truc tiep
+-- root_task_id: task goc cua ca nhanh
+-- completion_confirmed: dung cho task cha khi toan bo task con da xong
+-- status hop le theo FE:
+--   pending, in_progress, awaiting_confirmation, completed, cancelled
+-- =========================================================
+
+CREATE TABLE tasks (
+    id                  VARCHAR(50) PRIMARY KEY,
+    title               VARCHAR(255) NOT NULL,
+    description         TEXT NULL,
+    parent_task_id      VARCHAR(50) NULL,
+    root_task_id        VARCHAR(50) NOT NULL,
+    created_by          VARCHAR(50) NOT NULL,
+    assigned_to         VARCHAR(50) NOT NULL,
+    priority            VARCHAR(20) NOT NULL DEFAULT 'medium',
+    status              VARCHAR(30) NOT NULL DEFAULT 'pending',
+    progress            SMALLINT NOT NULL DEFAULT 0,
+    completion_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+    completed_at        TIMESTAMP NULL,
+    deadline            DATE NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at          TIMESTAMP NULL,
+    CONSTRAINT ck_tasks_priority
+        CHECK (priority IN ('low', 'medium', 'high', 'critical')),
+    CONSTRAINT ck_tasks_status
+        CHECK (status IN ('pending', 'in_progress', 'awaiting_confirmation', 'completed', 'cancelled')),
+    CONSTRAINT ck_tasks_progress
+        CHECK (progress BETWEEN 0 AND 100),
+    CONSTRAINT ck_tasks_not_self_parent
+        CHECK (parent_task_id IS NULL OR parent_task_id <> id),
+    CONSTRAINT fk_tasks_parent
+        FOREIGN KEY (parent_task_id)
+        REFERENCES tasks (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_tasks_root
+        FOREIGN KEY (root_task_id)
+        REFERENCES tasks (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_tasks_created_by
+        FOREIGN KEY (created_by)
+        REFERENCES users (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_tasks_assigned_to
+        FOREIGN KEY (assigned_to)
+        REFERENCES users (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+);
+
+-- =========================================================
+-- 4. COMMENT THEO TASK
+-- author_name_snapshot giup giu duoc lich su hien thi ngay ca khi user doi ten
+-- =========================================================
+
+CREATE TABLE task_comments (
+    id                  VARCHAR(50) PRIMARY KEY,
+    task_id             VARCHAR(50) NOT NULL,
+    author_id           VARCHAR(50) NOT NULL,
+    author_name_snapshot VARCHAR(150) NOT NULL,
+    message             TEXT NOT NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NULL,
+    deleted_at          TIMESTAMP NULL,
+    CONSTRAINT fk_task_comments_task
+        FOREIGN KEY (task_id)
+        REFERENCES tasks (id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_task_comments_author
+        FOREIGN KEY (author_id)
+        REFERENCES users (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+);
+
+-- =========================================================
+-- 5. TAI LIEU / FILE DINH KEM
+-- storage_path la key chinh de BE lay file tu S3 / MinIO / Firebase Storage
+-- kind bam sat FE: image, document
+-- =========================================================
+
+CREATE TABLE task_documents (
+    id                  VARCHAR(50) PRIMARY KEY,
+    task_id             VARCHAR(50) NOT NULL,
+    uploaded_by         VARCHAR(50) NOT NULL,
+    uploader_name_snapshot VARCHAR(150) NOT NULL,
+    original_name       VARCHAR(255) NOT NULL,
+    mime_type           VARCHAR(150) NOT NULL,
+    size_bytes          BIGINT NOT NULL DEFAULT 0,
+    kind                VARCHAR(20) NOT NULL,
+    storage_provider    VARCHAR(30) NOT NULL DEFAULT 'object_storage',
+    storage_bucket      VARCHAR(100) NULL,
+    storage_path        VARCHAR(500) NOT NULL,
+    download_url        VARCHAR(1000) NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_task_documents_kind
+        CHECK (kind IN ('image', 'document')),
+    CONSTRAINT ck_task_documents_size
+        CHECK (size_bytes >= 0),
+    CONSTRAINT fk_task_documents_task
+        FOREIGN KEY (task_id)
+        REFERENCES tasks (id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_task_documents_uploaded_by
+        FOREIGN KEY (uploaded_by)
+        REFERENCES users (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+);
+
+-- =========================================================
+-- 6. NHAT KY HOAT DONG / AUDIT LOG
+-- action_type bam sat FE:
+--   create, assign, status_change, edit, split, upload
+-- old_value/new_value de dang map sang panel history ben FE
+-- metadata_json co the luu them payload mo rong neu sau nay can
+-- =========================================================
+
+CREATE TABLE task_activity_logs (
+    id                  VARCHAR(50) PRIMARY KEY,
+    task_id             VARCHAR(50) NOT NULL,
+    actor_id            VARCHAR(50) NOT NULL,
+    actor_name_snapshot VARCHAR(150) NOT NULL,
+    action_type         VARCHAR(30) NOT NULL,
+    field_name          VARCHAR(50) NULL,
+    old_value           TEXT NULL,
+    new_value           TEXT NULL,
+    note                TEXT NULL,
+    metadata_json       TEXT NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_task_activity_logs_action
+        CHECK (action_type IN ('create', 'assign', 'status_change', 'edit', 'split', 'upload')),
+    CONSTRAINT fk_task_activity_logs_task
+        FOREIGN KEY (task_id)
+        REFERENCES tasks (id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_task_activity_logs_actor
+        FOREIGN KEY (actor_id)
+        REFERENCES users (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+);
+
+-- =========================================================
+-- 7. INDEX PHUC VU FE HIEN TAI
+-- =========================================================
+
+CREATE INDEX idx_users_manager_id
+    ON users (manager_id);
+
+CREATE INDEX idx_users_department_id
+    ON users (department_id);
+
+CREATE INDEX idx_users_role
+    ON users (role);
+
+CREATE INDEX idx_tasks_parent_task_id
+    ON tasks (parent_task_id);
+
+CREATE INDEX idx_tasks_root_task_id
+    ON tasks (root_task_id);
+
+CREATE INDEX idx_tasks_assigned_to
+    ON tasks (assigned_to);
+
+CREATE INDEX idx_tasks_created_by
+    ON tasks (created_by);
+
+CREATE INDEX idx_tasks_status
+    ON tasks (status);
+
+CREATE INDEX idx_tasks_deadline
+    ON tasks (deadline);
+
+CREATE INDEX idx_tasks_updated_at
+    ON tasks (updated_at);
+
+CREATE INDEX idx_tasks_parent_created_at
+    ON tasks (parent_task_id, created_at);
+
+CREATE INDEX idx_task_comments_task_created_at
+    ON task_comments (task_id, created_at);
+
+CREATE INDEX idx_task_documents_task_created_at
+    ON task_documents (task_id, created_at);
+
+CREATE INDEX idx_task_activity_logs_task_created_at
+    ON task_activity_logs (task_id, created_at);
+
+CREATE INDEX idx_task_activity_logs_actor_created_at
+    ON task_activity_logs (actor_id, created_at);
+
+-- =========================================================
+-- 8. GOI Y NGHIEP VU CHO BE
+-- =========================================================
+-- 1. Chi CEO duoc tao root task.
+-- 2. Chi nguoi duoc assigned vao task cha moi duoc tao subtask hoac split task.
+-- 3. Nguoi duoc giao task cha chi duoc assign task con cho cap duoi truc tiep.
+-- 4. Task la node la moi duoc cap nhat progress truc tiep.
+-- 5. Task cha phai duoc BE tinh lai progress/status dua tren task con.
+-- 6. overdue nen tinh dong tu deadline + status, khong can luu thanh cot rieng.
+-- 7. Moi thay doi task/comment/document nen ghi log trong cung transaction.
